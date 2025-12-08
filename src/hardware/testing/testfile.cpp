@@ -137,9 +137,6 @@ void MachineTest::print()
 				);
 	}
 
-	if(moo.has_exception) {
-		PINFOF(LOG_V0, LOG_PROGRAM, "  exception: number=%u, flag addr.=0x%X\n", moo.exception.number, moo.exception.flag_addr);
-	}
 	if(moo.has_hash) {
 		PINFOF(LOG_V0, LOG_PROGRAM, "  hash: ");
 		for(int i = 0; i < 20; i++) {

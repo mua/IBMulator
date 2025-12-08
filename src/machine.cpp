@@ -1300,7 +1300,6 @@ void Machine::cmd_run_test(const MachineTest &_test, std::promise<MachineTestRes
 			if(g_cpu.get_last_i_exception().vector != CPU_INVALID_INT) {
 				result.exception.number = g_cpu.get_last_i_exception().vector;
 				result.has_exception = true;
-				break;
 			}
 		}
 
