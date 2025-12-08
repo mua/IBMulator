@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -136,6 +136,7 @@ struct Instruction
 	bool rep_zf;        // tells the executor that the exit condition is by checking the ZF
 	bool rep_equal;     // true if REPE, false if REPNE
 	bool lock;          // true if LOCK prefix present
+	bool is_lockable;   // true if LOCK prefix is allowed
 	uint32_t eip;       // the instruction EIP value
 	uint32_t cseip;     // the instruction linear memory address
 	uint size;          // total size of the instruction (prefixes included)
@@ -209,7 +210,6 @@ private:
 	void prefix_0F(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
 	void prefix_0F_32(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_);
 	void illegal_opcode();
-	bool is_lockable();
 
 	inline uint8_t fetchb() {
 		uint8_t b = g_cpubus.fetchb();

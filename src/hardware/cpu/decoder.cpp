@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -40,6 +40,7 @@ Instruction * CPUDecoder::decode()
 	m_instr.rep_zf = false;
 	m_instr.rep_equal = false;
 	m_instr.lock = false;
+	m_instr.is_lockable = false;
 	m_instr.seg = REGI_NONE;
 	m_instr.eip = g_cpubus.eip();
 	m_instr.cseip = g_cpubus.cseip();
@@ -152,7 +153,7 @@ restart_opcode:
 		}
 	}
 	if(UNLIKELY(m_instr.lock) && CPU_FAMILY>CPU_286) {
-		if(!is_lockable() || m_instr.modrm.mod_is_reg()) {
+		if(!m_instr.is_lockable || m_instr.modrm.mod_is_reg()) {
 			illegal_opcode();
 		}
 	}
@@ -170,49 +171,3 @@ void CPUDecoder::illegal_opcode()
 	m_instr.fn = CPUExecutorFn::INVALID;
 }
 
-bool CPUDecoder::is_lockable()
-{
-	switch(m_instr.opcode) {
-		case 0x80:
-		case 0x81:
-		case 0x82:
-		case 0x83:
-			if(m_instr.modrm.n == 7) {
-				// CMP
-				return false;
-			}
-			// ADD, OR, ADC, SBB, AND, SUB, XOR
-			return true;
-		case 0x86:
-		case 0x87:
-			// XCHG
-			return true;
-		case 0xF6:
-		case 0xF7:
-			if(m_instr.modrm.n == 2 || m_instr.modrm.n == 3) {
-				// NOT, NEG
-				return true;
-			}
-			return false;
-		case 0xFE:
-		case 0xFF:
-			if(m_instr.modrm.n <= 1) {
-				// INC, DEC
-				return true;
-			}
-			return false;
-		case 0x0FAB: // BTS
-		case 0x0FB3: // BTR
-		case 0x0FBB: // BTC
-			return true;
-		case 0x0FBA:
-			if(m_instr.modrm.n >= 5) {
-				// BTC, BTR, BTS
-				return true;
-			}
-			return false;
-		default:
-			break;
-	}
-	return false;
-}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2024  Marco Bortolin
+ * Copyright (C) 2016-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -37,6 +37,7 @@ case 0x01:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADD_ed_rd;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -48,6 +49,7 @@ case 0x03:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADD_rd_ed;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -59,6 +61,7 @@ case 0x05:
 {
 	m_instr.id1 = fetchdw();
 	m_instr.fn = CPUExecutorFn::ADD_EAX_id;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -383,6 +386,7 @@ case 0x47: //EDI
 {
 	m_instr.reg = _opcode - 0x40;
 	m_instr.fn = CPUExecutorFn::INC_rd_op;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -398,6 +402,7 @@ case 0x4F: //EDI
 {
 	m_instr.reg = _opcode - 0x48;
 	m_instr.fn = CPUExecutorFn::DEC_rd_op;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -598,6 +603,7 @@ case 0x81:
 		default:
 			illegal_opcode();
 	}
+	m_instr.is_lockable = m_instr.modrm.n != 7;
 	ctb_op_ = m_instr.modrm.n;
 	ctb_idx_ = CTB_IDX_81;
 	break;
@@ -647,6 +653,7 @@ case 0x83:
 		default:
 			illegal_opcode();
 	}
+	m_instr.is_lockable = m_instr.modrm.n != 7;
 	ctb_op_ = m_instr.modrm.n;
 	ctb_idx_ = CTB_IDX_83;
 	break;
@@ -671,6 +678,7 @@ case 0x87:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::XCHG_ed_rd;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -735,6 +743,7 @@ case 0x97: //EDI
 {
 	m_instr.reg = _opcode - 0x90;
 	m_instr.fn = CPUExecutorFn::XCHG_EAX_rd;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -1326,9 +1335,11 @@ case 0xF7:
 		}
 		case 2:
 			m_instr.fn = CPUExecutorFn::NOT_ed;
+			m_instr.is_lockable = true;
 			break;
 		case 3:
 			m_instr.fn = CPUExecutorFn::NEG_ed;
+			m_instr.is_lockable = true;
 			break;
 		case 4:
 			m_instr.fn = CPUExecutorFn::MUL_ed;
@@ -1379,9 +1390,11 @@ case 0xFF:
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = CPUExecutorFn::INC_ed;
+			m_instr.is_lockable = true;
 			break;
 		case 1:
 			m_instr.fn = CPUExecutorFn::DEC_ed;
+			m_instr.is_lockable = true;
 			break;
 		case 2:
 			m_instr.fn = CPUExecutorFn::CALL_ed;

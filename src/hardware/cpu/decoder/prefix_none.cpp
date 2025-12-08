@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -33,6 +33,7 @@ case 0x00:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADD_eb_rb;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -41,6 +42,7 @@ case 0x01:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADD_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -49,6 +51,7 @@ case 0x02:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADD_rb_eb;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -57,6 +60,7 @@ case 0x03:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADD_rw_ew;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -65,6 +69,7 @@ case 0x04:
 {
 	m_instr.ib = fetchb();
 	m_instr.fn = CPUExecutorFn::ADD_AL_ib;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -73,6 +78,7 @@ case 0x05:
 {
 	m_instr.iw1 = fetchw();
 	m_instr.fn = CPUExecutorFn::ADD_AX_iw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -518,6 +524,7 @@ case 0x47: //DI
 {
 	m_instr.reg = _opcode - 0x40;
 	m_instr.fn = CPUExecutorFn::INC_rw_op;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -533,6 +540,7 @@ case 0x4F: //DI
 {
 	m_instr.reg = _opcode - 0x48;
 	m_instr.fn = CPUExecutorFn::DEC_rw_op;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -856,6 +864,7 @@ case 0x82:
 		default:
 			illegal_opcode();
 	}
+	m_instr.is_lockable = m_instr.modrm.n != 7;
 	ctb_op_ = m_instr.modrm.n;
 	ctb_idx_ = CTB_IDX_80;
 	break;
@@ -903,6 +912,7 @@ case 0x81:
 		default:
 			illegal_opcode();
 	}
+	m_instr.is_lockable = m_instr.modrm.n != 7;
 	ctb_op_ = m_instr.modrm.n;
 	ctb_idx_ = CTB_IDX_81;
 	break;
@@ -955,6 +965,7 @@ case 0x83:
 			// they are clearly 286 opcodes too.
 			illegal_opcode();
 	}
+	m_instr.is_lockable = m_instr.modrm.n != 7;
 	ctb_op_ = m_instr.modrm.n;
 	ctb_idx_ = CTB_IDX_83;
 	break;
@@ -981,6 +992,7 @@ case 0x86:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::XCHG_eb_rb;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -989,6 +1001,7 @@ case 0x87:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::XCHG_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -1085,6 +1098,7 @@ case 0x97: //DI
 {
 	m_instr.reg = _opcode - 0x90;
 	m_instr.fn = CPUExecutorFn::XCHG_AX_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -1980,9 +1994,11 @@ case 0xF6:
 		}
 		case 2:
 			m_instr.fn = CPUExecutorFn::NOT_eb;
+			m_instr.is_lockable = true;
 			break;
 		case 3:
 			m_instr.fn = CPUExecutorFn::NEG_eb;
+			m_instr.is_lockable = true;
 			break;
 		case 4:
 			m_instr.fn = CPUExecutorFn::MUL_eb;
@@ -2026,9 +2042,11 @@ case 0xF7:
 		}
 		case 2:
 			m_instr.fn = CPUExecutorFn::NOT_ew;
+			m_instr.is_lockable = true;
 			break;
 		case 3:
 			m_instr.fn = CPUExecutorFn::NEG_ew;
+			m_instr.is_lockable = true;
 			break;
 		case 4:
 			m_instr.fn = CPUExecutorFn::MUL_ew;
@@ -2102,9 +2120,11 @@ case 0xFE:
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = CPUExecutorFn::INC_eb;
+			m_instr.is_lockable = true;
 			break;
 		case 1:
 			m_instr.fn = CPUExecutorFn::DEC_eb;
+			m_instr.is_lockable = true;
 			break;
 		default:
 			illegal_opcode();
@@ -2130,9 +2150,11 @@ case 0xFF:
 	switch(m_instr.modrm.n) {
 		case 0:
 			m_instr.fn = CPUExecutorFn::INC_ew;
+			m_instr.is_lockable = true;
 			break;
 		case 1:
 			m_instr.fn = CPUExecutorFn::DEC_ew;
+			m_instr.is_lockable = true;
 			break;
 		case 2:
 			m_instr.fn = CPUExecutorFn::CALL_ew;

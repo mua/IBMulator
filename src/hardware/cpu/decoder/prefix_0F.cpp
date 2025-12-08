@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -537,6 +537,7 @@ case 0xA3:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::BT_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -583,6 +584,7 @@ case 0xAB:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::BTS_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -629,6 +631,7 @@ case 0xB3:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::BTR_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -694,6 +697,7 @@ case 0xBA:
 			illegal_opcode();
 			break;
 	}
+	m_instr.is_lockable = true;
 	ctb_op_ = m_instr.modrm.n;
 	ctb_idx_ = CTB_IDX_0FBA;
 	break;
@@ -705,6 +709,7 @@ case 0xBB:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::BTC_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
