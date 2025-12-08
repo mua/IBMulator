@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -147,11 +147,14 @@ protected:
 	};
 	MapEntry m_map[MEM_MAP_SIZE];
 
+	bool m_test_mode = false;
+
 public:
 	Memory();
 	~Memory();
 
 	void init();
+	void init_for_testing();
 	void reset(unsigned _signal);
 	void config_changed();
 	void check_trap(uint32_t _address, uint8_t _mask, uint32_t _value, unsigned _len) const noexcept;
@@ -196,6 +199,7 @@ public:
 	uint16_t dbg_read_word (uint32_t _addr) const noexcept;
 	uint32_t dbg_read_dword(uint32_t _addr) const noexcept;
 	uint64_t dbg_read_qword(uint32_t _addr) const noexcept;
+	void dbg_write_byte(uint32_t _addr, uint32_t _data) noexcept;
 	void dump(const std::string &_filename, uint32_t _address, uint _len);
 	void register_trap(uint32_t _lo, uint32_t _hi, uint _mask, memtrap_fun_t _fn);
 	static void s_debug_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);

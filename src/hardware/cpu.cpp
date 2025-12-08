@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -203,11 +203,12 @@ uint CPU::step()
 {
 	CPUCore core_log;
 	CPUState state_log;
-	CPUException log_exc;
 	bool do_log = false;
 
 	g_cpubus.reset_counters();
-	CPUCycles cycles = { 0,0,0,0,0,0 };
+
+	m_exception = { CPU_INVALID_INT, 0 };
+	m_cycles = { 0,0,0,0,0,0 };
 
 	if(m_s.activity_state == CPU_STATE_ACTIVE) {
 
@@ -244,7 +245,7 @@ uint CPU::step()
 				if(UNLIKELY(!g_cpubus.pq_is_valid())) {
 					g_cpubus.reset_pq();
 					m_instr = g_cpudecoder.decode();
-					cycles.decode = m_instr->size;
+					m_cycles.decode = m_instr->size;
 				} else {
 					m_instr = g_cpudecoder.decode();
 				}
@@ -259,10 +260,10 @@ uint CPU::step()
 			// instruction execution
 			g_cpuexecutor.execute(m_instr);
 
-			cycles.eu = get_execution_cycles(g_cpubus.memory_accessed());
+			m_cycles.eu = get_execution_cycles(g_cpubus.memory_accessed());
 			int io_time = g_devices.get_last_io_time();
 			if(io_time) {
-				cycles.io = get_io_cycles(io_time);
+				m_cycles.io = get_io_cycles(io_time);
 			}
 			m_instr->cycles.rep = 0;
 		} catch(CPUException &e) {
@@ -274,30 +275,27 @@ uint CPU::step()
 					g_machine.memdump(REG_CS.desc.base, GET_LIMIT(CS));
 				}
 			}
-			if(CPULOG) {
-				if(!do_log) {
-					m_logger.set_prev_i_exc(e, m_instr->cseip);
-				} else {
-					log_exc = e;
-				}
+			if(CPULOG && !do_log) {
+				m_logger.set_prev_i_exc(e, m_instr->cseip);
 			}
+			m_exception = e;
 			exception(e);
-			cycles.eu = 5; //just a random number
+			m_cycles.eu = 5; //just a random number
 		} catch(CPUShutdown &s) {
 			PDEBUGF(LOG_V2, LOG_CPU, "Entering shutdown for %s\n", s.what());
 			g_cpu.enter_sleep_state(CPU_STATE_SHUTDOWN);
-			cycles.eu = 5; //just a random number
+			m_cycles.eu = 5; //just a random number
 		}
 
 	} else {
 		// the CPU is idle and waiting for an external event
 		wait_for_event();
 		//we need to spend at least 1 cycle, otherwise the timers will never fire
-		cycles.eu = m_hlt_state_cycles;
+		m_cycles.eu = m_hlt_state_cycles;
 	}
 
 	if(g_cpubus.pq_is_valid()) {
-		g_cpubus.update(cycles.decode + cycles.eu);
+		g_cpubus.update(m_cycles.decode + m_cycles.eu);
 		// other possible strategies:
 		// g_cpubus.update(cycles.eu);
 		// g_cpubus.update((!g_cpubus.memory_written()) + cycles.eu);
@@ -307,30 +305,30 @@ uint CPU::step()
 	}
 
 	// determine the total amount of cycles spent
-	cycles.bu = g_cpubus.pipelined_mem_cycles() + m_instr->cycles.bu;
-	if(cycles.bu < 0) {
-		cycles.bu = 0;
+	m_cycles.bu = g_cpubus.pipelined_mem_cycles() + m_instr->cycles.bu;
+	if(m_cycles.bu < 0) {
+		m_cycles.bu = 0;
 	}
-	cycles.bu += g_cpubus.pipelined_fetch_cycles();
-	cycles.bus = g_cpubus.fetch_cycles() + g_cpubus.mem_r_cycles();
+	m_cycles.bu += g_cpubus.pipelined_fetch_cycles();
+	m_cycles.bus = g_cpubus.fetch_cycles() + g_cpubus.mem_r_cycles();
 
-	int tot_cycles = cycles.sum();
-	if(cycles.bus && (g_machine.get_virt_time_ns()%15085)<((tot_cycles*m_cycle_time))) {
+	int tot_cycles = m_cycles.sum();
+	if(m_cycles.bus && (g_machine.get_virt_time_ns()%15085)<((tot_cycles*m_cycle_time))) {
 		// DRAM refresh
 		// TODO count only for DRAM not other bus uses
-		cycles.refresh = g_memory.dram_cycles();
+		m_cycles.refresh = g_memory.dram_cycles();
 	}
-	tot_cycles += cycles.refresh;
+	tot_cycles += m_cycles.refresh;
 
 	if(CPULOG && do_log) {
 		m_logger.add_entry(
 			g_machine.get_virt_time_ns(), // time
 			*m_instr,                     // instruction
 			state_log,                    // state
-			log_exc,                      // cpu exception?
+			m_exception,                  // cpu exception?
 			core_log,                     // core
 			g_cpubus,                     // bus
-			cycles                        // cycles used
+			m_cycles                      // cycles used
 		);
 	}
 

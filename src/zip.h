@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022-2023  Marco Bortolin
+ * Copyright (C) 2022-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,6 +24,10 @@
 #include <archive.h>
 #include <archive_entry.h>
 #else
+#if HAVE_ZLIB
+#include <zlib.h>
+#define MINIZ_NO_ZLIB_COMPATIBLE_NAMES 1
+#endif
 #include "miniz/miniz.h"
 #endif
 

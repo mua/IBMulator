@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,6 +36,7 @@
 #include "hardware/devices/cdrom_disc.h"
 #include "hardware/devices/cdrom_loader.h"
 #include "hardware/printer/mps_printer.h"
+#include "hardware/testing/testfile.h"
 
 class CPU;
 class Memory;
@@ -141,7 +142,9 @@ private:
 	// the printer is shared between the gui and the parallel port
 	std::shared_ptr<MpsPrinter> m_printer;
 	std::thread m_printer_thread;
-	
+
+	bool m_test_mode = false;
+
 public:
 	bool ms_restore_fail = false;
 	//used for machine-gui synchronization
@@ -153,6 +156,7 @@ public:
 	~Machine();
 
 	void init();
+	void init_for_testing();
 	void calibrate(const Pacer &_p);
 	void start();
 	void shutdown();
@@ -240,6 +244,7 @@ public:
 	void cmd_print_VGA_text(std::vector<uint16_t> _text);
 	void cmd_reset_bench();
 	void cmd_commit_media(std::function<void()> _cb);
+	void cmd_run_test(const MachineTest &_test, std::promise<MachineTestResult> &_result);
 
 	void sig_config_changed(std::mutex &_mutex, std::condition_variable &_cv);
 

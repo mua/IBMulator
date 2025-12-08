@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -199,6 +199,22 @@ void Machine::init()
 	}
 }
 
+void Machine::init_for_testing()
+{
+	m_test_mode = true;
+
+	m_timers.set_log_facility(LOG_MACHINE);
+	m_timers.init();
+
+	g_cpu.init();
+	g_cpu.set_shutdown_trap([this] () {
+		PDEBUGF(LOG_V0, LOG_MACHINE, "CPU software reset.\n");
+	});
+	g_memory.init_for_testing();
+
+	set_single_step(true);
+}
+
 void Machine::register_floppy_loader_state_cb(FloppyEvents::ActivityCbFn _cb)
 {
 	m_floppy_loader->register_activity_cb(_cb);
@@ -215,11 +231,15 @@ void Machine::start()
 
 void Machine::shutdown()
 {
-	m_floppy_loader->cmd_quit();
-	m_floppy_loader_thread.join();
+	if(m_floppy_loader) {
+		m_floppy_loader->cmd_quit();
+		m_floppy_loader_thread.join();
+	}
 
-	m_cdrom_loader->cmd_quit();
-	m_cdrom_loader_thread.join();
+	if(m_cdrom_loader) {
+		m_cdrom_loader->cmd_quit();
+		m_cdrom_loader_thread.join();
+	}
 
 	if(m_printer) {
 		m_printer->cmd_quit();
@@ -292,6 +312,12 @@ void Machine::power_off()
 
 void Machine::config_changed(bool _startup)
 {
+	if(m_test_mode) {
+		g_cpu.config_changed();
+		g_memory.config_changed();
+		return;
+	}
+
 	if(_startup) {
 		ini_enum_map_t commit_values = {
 			{ "ask",     MEDIA_ASK },
@@ -471,7 +497,7 @@ void Machine::set_heartbeat(int64_t _nsec)
 void Machine::main_loop()
 {
 	while(true) {
-		PDEBUGF(LOG_V1, LOG_MACHINE, "waiting...\n");
+		PDEBUGF(LOG_V5, LOG_MACHINE, "waiting...\n");
 		Machine_fun_t fn;
 		m_cmd_queue.wait_and_pop(fn);
 		fn();
@@ -1188,6 +1214,163 @@ void Machine::cmd_commit_media(std::function<void()> _cb)
 		} else {
 			if(_cb) { _cb(); }
 		}
+	});
+}
+
+void Machine::cmd_run_test(const MachineTest &_test, std::promise<MachineTestResult> &_result)
+{
+	m_cmd_queue.push([&](){
+
+		// REAL MODE ASSUMED
+		// called shall verify that this is the case
+		MachineTestResult result;
+
+		m_on = true;
+		m_bench.start();
+		m_timers.reset();
+		m_s.cycles_left = 0;
+		g_cpu.reset(MACHINE_POWER_ON);
+		g_memory.reset(MACHINE_POWER_ON);
+		g_devices.reset(MACHINE_POWER_ON);
+
+		switch(g_cpu.family()) {
+			case CPU_286:
+				for(const auto r : Moo::REG16Range()) {
+					uint16_t value = _test.moo.GetInitialRegister(r);
+					switch(r) {
+						case Moo::REG16::AX: g_cpucore.AX() = value; break;
+						case Moo::REG16::BX: g_cpucore.BX() = value; break;
+						case Moo::REG16::CX: g_cpucore.CX() = value; break;
+						case Moo::REG16::DX: g_cpucore.DX() = value; break;
+						case Moo::REG16::CS: g_cpucore.dbg_load_segment_register(g_cpucore.CS(), value); break;
+						case Moo::REG16::SS: g_cpucore.dbg_load_segment_register(g_cpucore.SS(), value); break;
+						case Moo::REG16::DS: g_cpucore.dbg_load_segment_register(g_cpucore.DS(), value); break;
+						case Moo::REG16::ES: g_cpucore.dbg_load_segment_register(g_cpucore.ES(), value); break;
+						case Moo::REG16::SP: g_cpucore.SP() = value; break;
+						case Moo::REG16::BP: g_cpucore.BP() = value; break;
+						case Moo::REG16::SI: g_cpucore.SI() = value; break;
+						case Moo::REG16::DI: g_cpucore.DI() = value; break;
+						case Moo::REG16::IP: g_cpucore.set_EIP(value); break;
+						case Moo::REG16::FLAGS: g_cpucore.EFLAGS() = value; break;
+						default:
+							break;
+					}
+				}
+				break;
+			case CPU_386:
+			default:
+				for(const auto r : Moo::REG32Range()) {
+					uint32_t value = _test.moo.GetInitialRegister(r);
+					switch(r) {
+						case Moo::REG32::CR0: g_cpucore.CR0() = value; break;
+						case Moo::REG32::CR3: g_cpucore.CR3() = value; break;
+						case Moo::REG32::EAX: g_cpucore.EAX() = value; break;
+						case Moo::REG32::EBX: g_cpucore.EBX() = value; break;
+						case Moo::REG32::ECX: g_cpucore.ECX() = value; break;
+						case Moo::REG32::EDX: g_cpucore.EDX() = value; break;
+						case Moo::REG32::CS: g_cpucore.dbg_load_segment_register(g_cpucore.CS(), value); break;
+						case Moo::REG32::DS: g_cpucore.dbg_load_segment_register(g_cpucore.DS(), value); break;
+						case Moo::REG32::ES: g_cpucore.dbg_load_segment_register(g_cpucore.ES(), value); break;
+						case Moo::REG32::FS: g_cpucore.dbg_load_segment_register(g_cpucore.FS(), value); break;
+						case Moo::REG32::GS: g_cpucore.dbg_load_segment_register(g_cpucore.GS(), value); break;
+						case Moo::REG32::SS: g_cpucore.dbg_load_segment_register(g_cpucore.SS(), value); break;
+						case Moo::REG32::ESP: g_cpucore.ESP() = value; break;
+						case Moo::REG32::EBP: g_cpucore.EBP() = value; break;
+						case Moo::REG32::ESI: g_cpucore.ESI() = value; break;
+						case Moo::REG32::EDI: g_cpucore.EDI() = value; break;
+						case Moo::REG32::EIP: g_cpucore.set_EIP(value); break;
+						case Moo::REG32::EFLAGS: g_cpucore.EFLAGS() = value; break;
+						case Moo::REG32::DR6: g_cpucore.DR6() = value; break;
+						case Moo::REG32::DR7: g_cpucore.DR7() = value; break;
+						default:
+							break;
+					}
+				}
+				break;
+		}
+		for (const auto m : _test.moo.init_state.ram) {
+			g_memory.dbg_write_byte(m.address, m.value);
+		}
+
+		uint32_t timeout = 100'000;
+		while(g_cpu.get_activity_state() == CPU_STATE_ACTIVE && timeout--) {
+
+			core_step(0);
+
+			if(g_cpu.get_last_i_exception().vector != CPU_INVALID_INT) {
+				result.exception.number = g_cpu.get_last_i_exception().vector;
+				result.has_exception = true;
+				break;
+			}
+		}
+
+		for (const auto m : _test.moo.final_state.ram) {
+			result.cpu_state.ram.push_back({m.address, g_memory.dbg_read_byte(m.address)});
+		}
+
+		m_on = false;
+		g_cpu.power_off();
+		g_devices.power_off();
+
+		switch(g_cpu.family()) {
+			case CPU_286:
+				result.cpu_state.regs.type = Moo::Reader::RegisterState::REG_16;
+				for (const auto r : Moo::REG16Range()) {
+					switch(r) {
+						case Moo::REG16::AX    : result.cpu_state.regs.SetRegister(Moo::REG16::AX   , g_cpucore.get_AX()); break;
+						case Moo::REG16::BX    : result.cpu_state.regs.SetRegister(Moo::REG16::BX   , g_cpucore.get_BX()); break;
+						case Moo::REG16::CX    : result.cpu_state.regs.SetRegister(Moo::REG16::CX   , g_cpucore.get_CX()); break;
+						case Moo::REG16::DX    : result.cpu_state.regs.SetRegister(Moo::REG16::DX   , g_cpucore.get_DX()); break;
+						case Moo::REG16::CS    : result.cpu_state.regs.SetRegister(Moo::REG16::CS   , g_cpucore.get_CS().sel.value); break;
+						case Moo::REG16::SS    : result.cpu_state.regs.SetRegister(Moo::REG16::SS   , g_cpucore.get_SS().sel.value); break;
+						case Moo::REG16::DS    : result.cpu_state.regs.SetRegister(Moo::REG16::DS   , g_cpucore.get_DS().sel.value); break;
+						case Moo::REG16::ES    : result.cpu_state.regs.SetRegister(Moo::REG16::ES   , g_cpucore.get_ES().sel.value); break;
+						case Moo::REG16::SP    : result.cpu_state.regs.SetRegister(Moo::REG16::SP   , g_cpucore.get_SP()); break;
+						case Moo::REG16::BP    : result.cpu_state.regs.SetRegister(Moo::REG16::BP   , g_cpucore.get_BP()); break;
+						case Moo::REG16::SI    : result.cpu_state.regs.SetRegister(Moo::REG16::SI   , g_cpucore.get_SI()); break;
+						case Moo::REG16::DI    : result.cpu_state.regs.SetRegister(Moo::REG16::DI   , g_cpucore.get_DI()); break;
+						case Moo::REG16::IP    : result.cpu_state.regs.SetRegister(Moo::REG16::IP   , g_cpucore.get_EIP()); break;
+						case Moo::REG16::FLAGS : result.cpu_state.regs.SetRegister(Moo::REG16::FLAGS, g_cpucore.get_FLAGS(0xFFFF)); break;
+						default:
+							break;
+					}
+				}
+				break;
+			case CPU_386:
+			default:
+				result.cpu_state.regs.type = Moo::Reader::RegisterState::REG_32;
+				for (const auto r : Moo::REG32Range()) {
+					switch(r) {
+						case Moo::REG32::CR0    : result.cpu_state.regs.SetRegister(Moo::REG32::CR0   , g_cpucore.get_CR0()); break;
+						case Moo::REG32::CR3    : result.cpu_state.regs.SetRegister(Moo::REG32::CR3   , g_cpucore.get_CR3()); break;
+						case Moo::REG32::EAX    : result.cpu_state.regs.SetRegister(Moo::REG32::EAX   , g_cpucore.get_EAX()); break;
+						case Moo::REG32::EBX    : result.cpu_state.regs.SetRegister(Moo::REG32::EBX   , g_cpucore.get_EBX()); break;
+						case Moo::REG32::ECX    : result.cpu_state.regs.SetRegister(Moo::REG32::ECX   , g_cpucore.get_ECX()); break;
+						case Moo::REG32::EDX    : result.cpu_state.regs.SetRegister(Moo::REG32::EDX   , g_cpucore.get_EDX()); break;
+						case Moo::REG32::CS     : result.cpu_state.regs.SetRegister(Moo::REG32::CS    , g_cpucore.get_CS().sel.value); break;
+						case Moo::REG32::DS     : result.cpu_state.regs.SetRegister(Moo::REG32::DS    , g_cpucore.get_DS().sel.value); break;
+						case Moo::REG32::ES     : result.cpu_state.regs.SetRegister(Moo::REG32::ES    , g_cpucore.get_ES().sel.value); break;
+						case Moo::REG32::FS     : result.cpu_state.regs.SetRegister(Moo::REG32::FS    , g_cpucore.get_FS().sel.value); break;
+						case Moo::REG32::GS     : result.cpu_state.regs.SetRegister(Moo::REG32::GS    , g_cpucore.get_GS().sel.value); break;
+						case Moo::REG32::SS     : result.cpu_state.regs.SetRegister(Moo::REG32::SS    , g_cpucore.get_SS().sel.value); break;
+						case Moo::REG32::ESP    : result.cpu_state.regs.SetRegister(Moo::REG32::ESP   , g_cpucore.get_ESP()); break;
+						case Moo::REG32::EBP    : result.cpu_state.regs.SetRegister(Moo::REG32::EBP   , g_cpucore.get_EBP()); break;
+						case Moo::REG32::ESI    : result.cpu_state.regs.SetRegister(Moo::REG32::ESI   , g_cpucore.get_ESI()); break;
+						case Moo::REG32::EDI    : result.cpu_state.regs.SetRegister(Moo::REG32::EDI   , g_cpucore.get_EDI()); break;
+						case Moo::REG32::EIP    : result.cpu_state.regs.SetRegister(Moo::REG32::EIP   , g_cpucore.get_EIP()); break;
+						case Moo::REG32::EFLAGS : result.cpu_state.regs.SetRegister(Moo::REG32::EFLAGS, g_cpucore.get_EFLAGS(0xffffffff)); break;
+						case Moo::REG32::DR6    : result.cpu_state.regs.SetRegister(Moo::REG32::DR6   , g_cpucore.get_DR6()); break;
+						case Moo::REG32::DR7    : result.cpu_state.regs.SetRegister(Moo::REG32::DR7   , g_cpucore.get_DR7()); break;
+						default:
+							break;
+					}
+				}
+				break;
+		}
+		result.cpu_state.regs.is_populated = true;
+
+		result.is_valid = true;
+		_result.set_value(result);
 	});
 }
 

@@ -488,6 +488,31 @@ bool FileSys::is_same_file(const char *_path1, const char *_path2)
 #endif
 }
 
+std::string FileSys::check_file_presence(const char *_raw_path, std::vector<std::string> _valid_ext)
+{
+	std::string dir, base, ext;
+	FileSys::get_path_parts(_raw_path, dir, base, ext);
+	auto ext_lower = str_to_lower(ext);
+	if(!_valid_ext.empty() && find(_valid_ext.begin(), _valid_ext.end(), str_to_lower(ext_lower)) == _valid_ext.end()) {
+		throw std::runtime_error(str_format("'%s' is not a valid extension", ext.c_str()));
+	}
+	std::string resolved_path;
+	if(!dir.empty()) {
+		std::string resolved_dir;
+		try {
+			resolved_dir = FileSys::realpath(dir.c_str());
+		} catch(std::exception &) {
+			throw std::runtime_error(str_format("the file's directory '%s' doesn't exist", dir.c_str()));
+		}
+		resolved_path = resolved_dir + FS_SEP;
+	}
+	resolved_path += base + ext;
+	if(!FileSys::file_exists(resolved_path.c_str())) {
+		throw std::runtime_error(str_format("the file doesn't exist", ext.c_str()));
+	}
+	return resolved_path;
+}
+
 FILE * FileSys::fopen(const char *_filename, const char *_flags)
 {
 	return ::fopen(to_native(_filename).c_str(), _flags);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
 	g_syslog.remove(templog, false);
 
 	if(start) {
-		g_program.start();
+		return_value = g_program.start();
 	}
 
 	PINFO(LOG_V0, "Program stop\n");

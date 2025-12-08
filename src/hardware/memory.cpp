@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -75,6 +75,12 @@ void Memory::init()
 			Memory::s_write<uint8_t>, Memory::s_write<uint16_t>, Memory::s_write<uint32_t>, this);
 }
 
+void Memory::init_for_testing()
+{
+	m_test_mode = true;
+	init();
+}
+
 void Memory::reset(unsigned _signal)
 {
 	if(_signal == MACHINE_POWER_ON || _signal == MACHINE_HARD_RESET) {
@@ -113,13 +119,18 @@ void Memory::config_changed()
 	g_program.config().set_string(MEM_SECTION, MEM_RAM_EXP, ram_size_str[m_ram.exp]);
 
 	m_ram.size = g_machine.model().board_ram + m_ram.exp;
-	// the last 512 KiB are reserved for the ROM
-	m_ram.size = std::min(16384u-512u-384u, m_ram.size);
-	m_ram.size = std::max(128u, m_ram.size);
+	uint32_t low_mapping_limit = 0xA0000u;
+	if(m_test_mode) {
+		low_mapping_limit = 0x100000u;
+	} else {
+		// the last 512 KiB are reserved for the ROM
+		m_ram.size = std::min(16384u-512u-384u, m_ram.size);
+		m_ram.size = std::max(128u, m_ram.size);
+	}
 	m_ram.size -= m_ram.size % 128;
 	m_ram.size *= KEBIBYTE;
 
-	uint32_t low_mapping_size = std::min(m_ram.size, 0xA0000u);
+	uint32_t low_mapping_size = std::min(m_ram.size, low_mapping_limit);
 	uint32_t high_mapping_size = m_ram.size - low_mapping_size;
 
 	m_ram.buffer_size = MEBIBYTE + high_mapping_size;
@@ -517,7 +528,7 @@ uint8_t  Memory::dbg_read_byte(uint32_t _addr) const noexcept
 {
 	_addr &= m_s.mask;
 	int index = _addr / MEM_MAP_GRANULARITY;
-	assert(index < MEM_MAP_SIZE);
+	if(index >= MEM_MAP_SIZE) return 0xFF;
 	MemMapping *map = m_map[index].read;
 	if(map->read.byte) {
 		return map->read.byte(_addr, map->read.priv);
@@ -529,7 +540,7 @@ uint16_t Memory::dbg_read_word(uint32_t _addr) const noexcept
 {
 	_addr &= m_s.mask;
 	int index = _addr / MEM_MAP_GRANULARITY;
-	assert(index < MEM_MAP_SIZE);
+	if(index >= MEM_MAP_SIZE) return 0xFFFF;
 	MemMapping *map = m_map[index].read;
 	if(map->read.word) {
 		return map->read.word(_addr, map->read.priv);
@@ -543,7 +554,7 @@ uint32_t Memory::dbg_read_dword(uint32_t _addr) const noexcept
 {
 	_addr &= m_s.mask;
 	int index = _addr / MEM_MAP_GRANULARITY;
-	assert(index < MEM_MAP_SIZE);
+	if(index >= MEM_MAP_SIZE) return 0xFFFFFFFF;
 	MemMapping *map = m_map[index].read;
 	if(map->read.dword) {
 		return map->read.dword(_addr, map->read.priv);
@@ -558,6 +569,17 @@ uint64_t Memory::dbg_read_qword(uint32_t _addr) const noexcept
 	return (
 		uint64_t(dbg_read_dword(_addr)) | uint64_t(dbg_read_dword(_addr+4)) << 32
 	);
+}
+
+void Memory::dbg_write_byte(uint32_t _addr, uint32_t _data) noexcept
+{
+	_addr &= m_s.mask;
+	int index = _addr / MEM_MAP_GRANULARITY;
+	if(index >= MEM_MAP_SIZE) return;
+	MemMapping *map = m_map[index].write;
+	if(map->write.byte) {
+		map->write.byte(_addr, _data, map->write.priv);
+	}
 }
 
 void Memory::dump(const std::string &_filename, uint32_t _address, uint _len)

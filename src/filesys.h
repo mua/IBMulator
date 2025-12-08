@@ -82,6 +82,7 @@ public:
 	static void copy_file(const char *_from, const char *_to);
 	static int rename_file(const char *_from, const char *_to);
 	static bool is_same_file(const char *_path1, const char *_path2);
+	static std::string check_file_presence(const char *_raw_path, std::vector<std::string> _valid_ext);
 
 	static FILE* fopen(const char *_filename, const char *_flags);
 	static FILE* fopen(std::string _filename, const char *_flags);

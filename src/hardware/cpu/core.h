@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -402,6 +402,9 @@ protected:
 
 public:
 
+	void save_state(StateBuf &_state) const;
+	void restore_state(StateBuf &_state);
+
 	void reset();
 
 	inline GenReg & gen_reg(uint8_t idx) { assert(idx<8); return m_genregs[idx]; }
@@ -517,45 +520,92 @@ public:
 		return get_seg_base(_segidx) + _offset;
 	}
 
-	// convenience funcs used by CPUDebugger
-	inline uint8_t  get_AL() const  { return m_genregs[REGI_EAX].byte[0]; }
-	inline uint8_t  get_AH() const  { return m_genregs[REGI_EAX].byte[1]; }
-	inline uint16_t get_AX() const  { return m_genregs[REGI_EAX].word[0]; }
-	inline uint32_t get_EAX() const { return m_genregs[REGI_EAX].dword[0]; }
-	inline uint8_t  get_BL() const  { return m_genregs[REGI_EBX].byte[0]; }
-	inline uint8_t  get_BH() const  { return m_genregs[REGI_EBX].byte[1]; }
-	inline uint16_t get_BX() const  { return m_genregs[REGI_EBX].word[0]; }
-	inline uint32_t get_EBX() const { return m_genregs[REGI_EBX].dword[0]; }
-	inline uint8_t  get_CL() const  { return m_genregs[REGI_ECX].byte[0]; }
-	inline uint8_t  get_CH() const  { return m_genregs[REGI_ECX].byte[1]; }
-	inline uint16_t get_CX() const  { return m_genregs[REGI_ECX].word[0]; }
-	inline uint32_t get_ECX() const { return m_genregs[REGI_ECX].dword[0]; }
-	inline uint8_t  get_DL() const  { return m_genregs[REGI_EDX].byte[0]; }
-	inline uint8_t  get_DH() const  { return m_genregs[REGI_EDX].byte[1]; }
-	inline uint16_t get_DX() const  { return m_genregs[REGI_EDX].word[0]; }
-	inline uint32_t get_EDX() const { return m_genregs[REGI_EDX].dword[0]; }
-	inline uint16_t get_SI() const  { return m_genregs[REGI_ESI].word[0]; }
-	inline uint32_t get_ESI() const { return m_genregs[REGI_ESI].dword[0]; }
-	inline uint16_t get_BP() const  { return m_genregs[REGI_EBP].word[0]; }
-	inline uint32_t get_EBP() const { return m_genregs[REGI_EBP].dword[0]; }
-	inline uint16_t get_DI() const  { return m_genregs[REGI_EDI].word[0]; }
-	inline uint32_t get_EDI() const { return m_genregs[REGI_EDI].dword[0]; }
-	inline uint16_t get_SP() const  { return m_genregs[REGI_ESP].word[0]; }
-	inline uint32_t get_ESP() const { return m_genregs[REGI_ESP].dword[0]; }
-	inline SegReg & get_CS() { return m_segregs[REGI_CS]; }
-	inline SegReg & get_DS() { return m_segregs[REGI_DS]; }
-	inline SegReg & get_SS() { return m_segregs[REGI_SS]; }
-	inline SegReg & get_ES() { return m_segregs[REGI_ES]; }
-	inline SegReg & get_FS() { return m_segregs[REGI_FS]; }
-	inline SegReg & get_GS() { return m_segregs[REGI_GS]; }
-	inline SegReg & get_TR() { return m_segregs[REGI_TR]; }
-	inline SegReg & get_LDTR() { return m_segregs[REGI_LDTR]; }
+	// convenience funcs used by CPUDebugger and testing
+	uint8_t  get_AL() const  { return m_genregs[REGI_EAX].byte[0]; }
+	uint8_t  get_AH() const  { return m_genregs[REGI_EAX].byte[1]; }
+	uint16_t get_AX() const  { return m_genregs[REGI_EAX].word[0]; }
+	uint32_t get_EAX() const { return m_genregs[REGI_EAX].dword[0]; }
+	uint8_t  get_BL() const  { return m_genregs[REGI_EBX].byte[0]; }
+	uint8_t  get_BH() const  { return m_genregs[REGI_EBX].byte[1]; }
+	uint16_t get_BX() const  { return m_genregs[REGI_EBX].word[0]; }
+	uint32_t get_EBX() const { return m_genregs[REGI_EBX].dword[0]; }
+	uint8_t  get_CL() const  { return m_genregs[REGI_ECX].byte[0]; }
+	uint8_t  get_CH() const  { return m_genregs[REGI_ECX].byte[1]; }
+	uint16_t get_CX() const  { return m_genregs[REGI_ECX].word[0]; }
+	uint32_t get_ECX() const { return m_genregs[REGI_ECX].dword[0]; }
+	uint8_t  get_DL() const  { return m_genregs[REGI_EDX].byte[0]; }
+	uint8_t  get_DH() const  { return m_genregs[REGI_EDX].byte[1]; }
+	uint16_t get_DX() const  { return m_genregs[REGI_EDX].word[0]; }
+	uint32_t get_EDX() const { return m_genregs[REGI_EDX].dword[0]; }
+	uint16_t get_SI() const  { return m_genregs[REGI_ESI].word[0]; }
+	uint32_t get_ESI() const { return m_genregs[REGI_ESI].dword[0]; }
+	uint16_t get_BP() const  { return m_genregs[REGI_EBP].word[0]; }
+	uint32_t get_EBP() const { return m_genregs[REGI_EBP].dword[0]; }
+	uint16_t get_DI() const  { return m_genregs[REGI_EDI].word[0]; }
+	uint32_t get_EDI() const { return m_genregs[REGI_EDI].dword[0]; }
+	uint16_t get_SP() const  { return m_genregs[REGI_ESP].word[0]; }
+	uint32_t get_ESP() const { return m_genregs[REGI_ESP].dword[0]; }
+	const SegReg & get_CS() const { return m_segregs[REGI_CS]; }
+	const SegReg & get_DS() const { return m_segregs[REGI_DS]; }
+	const SegReg & get_SS() const { return m_segregs[REGI_SS]; }
+	const SegReg & get_ES() const { return m_segregs[REGI_ES]; }
+	const SegReg & get_FS() const { return m_segregs[REGI_FS]; }
+	const SegReg & get_GS() const { return m_segregs[REGI_GS]; }
+	const SegReg & get_TR() const { return m_segregs[REGI_TR]; }
+	const SegReg & get_LDTR() const { return m_segregs[REGI_LDTR]; }
+	uint32_t get_CR0() const { return m_cr[0]; }
+	uint32_t get_CR3() const { return m_cr[3]; }
+	uint32_t get_DR6() const { return m_dr[6]; }
+	uint32_t get_DR7() const { return m_dr[7]; }
+
+	uint8_t  & AL()  { return m_genregs[REGI_EAX].byte[0]; }
+	uint8_t  & AH()  { return m_genregs[REGI_EAX].byte[1]; }
+	uint16_t & AX()  { return m_genregs[REGI_EAX].word[0]; }
+	uint32_t & EAX() { return m_genregs[REGI_EAX].dword[0]; }
+	uint8_t  & BL()  { return m_genregs[REGI_EBX].byte[0]; }
+	uint8_t  & BH()  { return m_genregs[REGI_EBX].byte[1]; }
+	uint16_t & BX()  { return m_genregs[REGI_EBX].word[0]; }
+	uint32_t & EBX() { return m_genregs[REGI_EBX].dword[0]; }
+	uint8_t  & CL()  { return m_genregs[REGI_ECX].byte[0]; }
+	uint8_t  & CH()  { return m_genregs[REGI_ECX].byte[1]; }
+	uint16_t & CX()  { return m_genregs[REGI_ECX].word[0]; }
+	uint32_t & ECX() { return m_genregs[REGI_ECX].dword[0]; }
+	uint8_t  & DL()  { return m_genregs[REGI_EDX].byte[0]; }
+	uint8_t  & DH()  { return m_genregs[REGI_EDX].byte[1]; }
+	uint16_t & DX()  { return m_genregs[REGI_EDX].word[0]; }
+	uint32_t & EDX() { return m_genregs[REGI_EDX].dword[0]; }
+	uint16_t & SI()  { return m_genregs[REGI_ESI].word[0]; }
+	uint32_t & ESI() { return m_genregs[REGI_ESI].dword[0]; }
+	uint16_t & BP()  { return m_genregs[REGI_EBP].word[0]; }
+	uint32_t & EBP() { return m_genregs[REGI_EBP].dword[0]; }
+	uint16_t & DI()  { return m_genregs[REGI_EDI].word[0]; }
+	uint32_t & EDI() { return m_genregs[REGI_EDI].dword[0]; }
+	uint16_t & SP()  { return m_genregs[REGI_ESP].word[0]; }
+	uint32_t & ESP() { return m_genregs[REGI_ESP].dword[0]; }
+	SegReg & CS() { return m_segregs[REGI_CS]; }
+	SegReg & DS() { return m_segregs[REGI_DS]; }
+	SegReg & SS() { return m_segregs[REGI_SS]; }
+	SegReg & ES() { return m_segregs[REGI_ES]; }
+	SegReg & FS() { return m_segregs[REGI_FS]; }
+	SegReg & GS() { return m_segregs[REGI_GS]; }
+	SegReg & TR() { return m_segregs[REGI_TR]; }
+	SegReg & LDTR() { return m_segregs[REGI_LDTR]; }
+	uint32_t & EFLAGS() { return m_eflags; }
+	uint32_t & CR0() { return m_cr[0]; }
+	uint32_t & CR3() { return m_cr[3]; }
+	uint32_t & DR6() { return m_dr[6]; }
+	uint32_t & DR7() { return m_dr[7]; }
+
+	void dbg_load_segment_register(SegReg & _segreg, uint16_t _value) {
+		if(is_rmode() && _segreg.is(REG_CS)) {
+			load_segment_defaults(_segreg, _value);
+		} else {
+			load_segment_register(_segreg, _value);
+		}
+	}
 
 	uint32_t dbg_get_phyaddr(uint32_t _linaddr, Memory *_memory=nullptr) const;
 	uint32_t dbg_get_phyaddr(unsigned _segidx, uint32_t _offset, Memory *_memory=nullptr) const;
-
-	void save_state(StateBuf &_state) const;
-	void restore_state(StateBuf &_state);
 };
 
 

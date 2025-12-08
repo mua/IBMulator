@@ -26,6 +26,7 @@
 #include "hardware/devices/adlib.h"
 #include "hardware/devices/mpu401.h"
 #include "hardware/devices/storagectrl.h"
+#include "hardware/testing/testfile.h"
 #include "gui/gui_opengl.h"
 #include "gui/gui_sdl2d.h"
 #include "program.h"
@@ -503,10 +504,6 @@ bool Program::initialize(int argc, char** argv)
 
 	m_config[1].copy(m_config[0]);
 
-	init_SDL();
-
-	m_quit = false;
-
 	if(m_config[0].get_bool(LOG_SECTION, LOG_OVERRIDE_VERBOSITY)) {
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_PROGRAM_VERBOSITY),  LOG_PROGRAM);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_FS_VERBOSITY),       LOG_FS);
@@ -535,7 +532,26 @@ bool Program::initialize(int argc, char** argv)
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_MIDI_VERBOSITY),     LOG_MIDI);
 		g_syslog.set_verbosity(m_config[0].get_int(LOG_SECTION, LOG_NET_VERBOSITY),      LOG_NET);
 	}
-	
+
+	if(m_test_file) {
+		m_machine = &g_machine;
+		try {
+			m_machine->init_for_testing();
+			m_machine->config_changed(true);
+			if(g_cpu.family() != m_test_file->cpu_family()) {
+				throw std::runtime_error("machine's CPU family not compatible with the test file");
+			}
+		} catch(...) {
+			m_machine->shutdown();
+			throw;
+		}
+		return true;
+	}
+
+	init_SDL();
+
+	m_quit = false;
+
 	static std::map<std::string, unsigned> waitmethods = {
 		{ "",      PACER_WAIT_AUTO },
 		{ "auto",  PACER_WAIT_AUTO },
@@ -702,29 +718,39 @@ void Program::parse_arguments(int argc, char** argv)
 
 	opterr = 0;
 
-	while((c = getopt(argc, argv, "v:c:u:r:s")) != -1) {
+	while((c = getopt(argc, argv, "v:c:u:r:st:")) != -1) {
 		switch(c) {
+			case 't': {
+				std::string test_file;
+				PINFOF(LOG_V0, LOG_PROGRAM, "Single Step Test file: '%s'\n", optarg);
+				try {
+					test_file = FileSys::check_file_presence(optarg, {".moo",".gz"});
+				} catch(std::runtime_error &e) {
+					PERRF(LOG_PROGRAM, "File error: %s.\n", e.what());
+					throw;
+				}
+				m_test_file = std::make_unique<TestFile>();
+				try {
+					m_test_file->load(test_file);
+					if(m_test_file->cpu_mode() != 0) {
+						throw std::runtime_error("tests not in real mode");
+					}
+				} catch(std::runtime_error &e) {
+					PERRF(LOG_PROGRAM, "Test file error: %s.\n", e.what());
+					m_test_file.reset(nullptr);
+					throw;
+				}
+				break;
+			}
 			case 'c': {
 				m_cfg_file = "";
 				PINFOF(LOG_V0, LOG_PROGRAM, "INI file specified from the command line: '%s'\n", optarg);
-				std::string dir, base, ext;
-				FileSys::get_path_parts(optarg, dir, base, ext);
-				if(str_to_lower(ext) != ".ini") {
-					PERRF(LOG_PROGRAM, "The configuration file must be an INI file, '%s' is not a valid extension.\n",
-							str_to_lower(ext).c_str());
-					throw std::exception();
+				try {
+					m_cfg_file = FileSys::check_file_presence(optarg, {".ini"});
+				} catch(std::runtime_error &e) {
+					PERRF(LOG_PROGRAM, "INI file error: %s.\n", e.what());
+					throw;
 				}
-				std::string resolved_dir;
-				if(!dir.empty()) {
-					try {
-						resolved_dir = FileSys::realpath(dir.c_str());
-					} catch(std::exception &) {
-						PERRF(LOG_PROGRAM, "The INI file's directory '%s' doesn't exist.\n", dir.c_str());
-						throw;
-					}
-					m_cfg_file = resolved_dir + FS_SEP;
-				}
-				m_cfg_file += base + ext;
 				break;
 			}
 			case 'u':
@@ -824,9 +850,14 @@ void Program::main_loop()
 	}
 }
 
-void Program::start()
+int Program::start()
 {
 	PDEBUGF(LOG_V0, LOG_PROGRAM, "Program thread started\n");
+	
+	if(m_test_file) {
+		return machine_test();
+	}
+	
 	std::thread machine(&Machine::start,m_machine);
 	std::thread mixer(&Mixer::start,m_mixer);
 
@@ -856,6 +887,53 @@ void Program::start()
 	PDEBUGF(LOG_V0, LOG_PROGRAM, "Mixer thread stopped\n");
 
 	m_gui->shutdown();
+	
+	return 0;
+}
+
+int Program::machine_test()
+{
+	PINFOF(LOG_V0, LOG_PROGRAM, "Processing Test file: '%s'\n", m_test_file->path());
+
+	std::thread machine(&Machine::start, m_machine);
+
+	int pass_count = 0, fail_count = 0;
+	try {
+		for(unsigned index = 0; index < m_test_file->test_count(); index++) {
+			auto test = m_test_file->get_test(index);
+			PINFOF(LOG_V0, LOG_PROGRAM, "Running test #%u: ", test.moo.index);
+			std::promise<MachineTestResult> result;
+			std::future<MachineTestResult> fut = result.get_future();
+			m_machine->cmd_run_test(test, result);
+			fut.wait();
+			auto test_result = fut.get();
+			if(test_result.analyze(test)) {
+				PINFOF(LOG_V0, LOG_PROGRAM, "PASS\n");
+				pass_count++;
+			} else {
+				PINFOF(LOG_V0, LOG_PROGRAM, "FAIL\n");
+				PINFOF(LOG_V0, LOG_PROGRAM, " Test result errors:\n");
+				for(auto & str : test_result.analysis_log) {
+					PINFOF(LOG_V0, LOG_PROGRAM, "  %s\n", str.c_str());
+				}
+				PINFOF(LOG_V0, LOG_PROGRAM, " Test data:\n");
+				test.print();
+				fail_count++;
+			}
+		}
+		PINFOF(LOG_V0, LOG_PROGRAM, "PASS count: %d\n", pass_count);
+		PINFOF(LOG_V0, LOG_PROGRAM, "FAIL count: %d\n", fail_count);
+	} catch(std::runtime_error &e) {
+		PINFOF(LOG_V0, LOG_PROGRAM, "\n");
+		PINFOF(LOG_V0, LOG_PROGRAM, "Testing failed: %s\n", e.what());
+		fail_count++;
+	}
+	m_machine->cmd_cpulog();
+	m_machine->cmd_quit();
+	machine.join();
+	PDEBUGF(LOG_V0, LOG_PROGRAM, "Machine thread stopped\n");
+
+	return fail_count == 0 ? 0 : 3;
 }
 
 void Program::stop()

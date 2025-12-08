@@ -94,6 +94,9 @@ protected:
 	std::string m_log_prg_name;
 	std::regex m_log_prg_regex;
 
+	CPUException m_exception; // exception thrown by the last executed instruction
+	CPUCycles m_cycles; // cycles of the last executed instruction
+
 public:
 	CPU();
 
@@ -131,6 +134,10 @@ public:
 	void set_shutdown_trap(std::function<void(void)> _fn);
 	void enter_sleep_state(CPUActivityState _state);
 	void exception(CPUException _exc);
+
+	const CPUException & get_last_i_exception() const { return m_exception; }
+	const CPUCycles & get_last_i_cycles() const { return m_cycles; }
+	CPUActivityState get_activity_state() const { return static_cast<CPUActivityState>(m_s.activity_state); }
 
 	void write_log();
 	void enable_prg_log(std::string _prg_name);

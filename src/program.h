@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,6 +24,7 @@
 #include "bench.h"
 #include "appconfig.h"
 #include "state_record.h"
+#include "hardware/testing/testfile.h"
 #include <condition_variable>
 
 class GUI;
@@ -52,9 +53,12 @@ class Program
 	bool m_start_machine;
 	std::function<void()> m_restore_fn;
 
+	std::unique_ptr<TestFile> m_test_file; // a machine test file to be executed.
+
 	void init_SDL();
 	void process_evts();
 	void main_loop();
+	int machine_test();
 
 	std::string get_assets_dir(int argc, char** argv);
 	void parse_arguments(int argc, char** argv);
@@ -70,7 +74,7 @@ public:
 	~Program();
 
 	bool initialize(int argc, char** argv);
-	void start();
+	int start();
 	void stop();
 
 	int64_t heartbeat() const { return m_heartbeat; }

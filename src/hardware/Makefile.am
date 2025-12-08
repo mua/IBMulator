@@ -97,7 +97,8 @@ libhardware_a_SOURCES = \
 	printer/mps_printer.cpp \
 	printer/mps_printer_epson.cpp \
 	printer/mps_printer_ibmgp.cpp \
-	printer/mps_printer_ibmpp.cpp
+	printer/mps_printer_ibmpp.cpp \
+	testing/testfile.cpp
 
 noinst_HEADERS = \
 	cpu.h \
@@ -180,4 +181,6 @@ noinst_HEADERS = \
 	devices/cdrom_loader.h \
 	devices/cdrom_events.h \
 	devices/cdrom_fx.h \
-	printer/mps_printer.h
+	printer/mps_printer.h \
+	testing/testfile.h \
+	testing/mooreader.h
