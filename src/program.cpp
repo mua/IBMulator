@@ -499,6 +499,13 @@ bool Program::initialize(int argc, char** argv)
 	FileSys::create_dir(capture_dir_path.c_str());
 	PINFO(LOG_V0,"Capture directory: %s\n", capture_dir_path.c_str());
 
+	if(!m_log_filename.empty()) {
+		m_config[0].set_string(PROGRAM_SECTION, PROGRAM_LOG_FILE, m_log_filename);
+	}
+	if(!m_cpulog_filename.empty()) {
+		m_config[0].set_string(CPU_SECTION, CPU_LOG_FILE, m_cpulog_filename);
+	}
+
 	std::string dumplog = m_config[0].get_file(PROGRAM_SECTION, PROGRAM_LOG_FILE, FILE_TYPE_USER);
 	g_syslog.add_device(LOG_ALL_PRIORITIES, LOG_ALL_FACILITIES, new LogStream(dumplog.c_str()));
 
@@ -718,7 +725,7 @@ void Program::parse_arguments(int argc, char** argv)
 
 	opterr = 0;
 
-	while((c = getopt(argc, argv, "v:c:u:r:st:")) != -1) {
+	while((c = getopt(argc, argv, "v:c:u:r:st:l:k:")) != -1) {
 		switch(c) {
 			case 't': {
 				std::string test_file;
@@ -788,8 +795,23 @@ void Program::parse_arguments(int argc, char** argv)
 				m_start_machine = true;
 				break;
 			}
+			case 'l': {
+				m_log_filename = optarg;
+				break;
+			}
+			case 'k': {
+				m_cpulog_filename = optarg;
+				break;
+			}
 			case '?':
-				if(optopt == 'c')
+				if(optopt == 'c' ||
+				   optopt == 'v' ||
+				   optopt == 'u' ||
+				   optopt == 'r' ||
+				   optopt == 't' ||
+				   optopt == 'l' ||
+				   optopt == 'k'
+				)
 					PERRF(LOG_PROGRAM, "Option -%c requires an argument\n", optopt);
 				else if(isprint(optopt))
 					PERRF(LOG_PROGRAM, "Unknown option `-%c'\n", optopt);

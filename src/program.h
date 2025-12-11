@@ -54,6 +54,8 @@ class Program
 	std::function<void()> m_restore_fn;
 
 	std::unique_ptr<TestFile> m_test_file; // a machine test file to be executed.
+	std::string m_log_filename;
+	std::string m_cpulog_filename;
 
 	void init_SDL();
 	void process_evts();

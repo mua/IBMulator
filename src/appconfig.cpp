@@ -592,6 +592,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ CPU_MODEL,     MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
 		{ CPU_FREQUENCY, MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },
 		{ CPU_HLT_WAIT,  PROGRAM_CONFIG, PUBLIC_CFGKEY, "500"  },
+		{ CPU_LOG_FILE,  PROGRAM_CONFIG, HIDDEN_CFGKEY, "cpulog.log" }
 	} },
 	{ MEM_SECTION, {
 		{ MEM_RAM_EXP,   MACHINE_CONFIG, PUBLIC_CFGKEY, "auto" },

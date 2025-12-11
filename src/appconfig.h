@@ -207,6 +207,7 @@ public:
 #define CPU_MODEL               "model"
 #define CPU_FREQUENCY           "frequency"
 #define CPU_HLT_WAIT            "hlt_wait"
+#define CPU_LOG_FILE            "log_file"
 
 #define MEM_SECTION             "memory"
 #define MEM_RAM_EXP             "expansion"

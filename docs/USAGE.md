@@ -1181,3 +1181,4 @@ Mixer dialog:
  * `-r NAME` : Restore the specified savestate. `NAME` can be a number, or the full savesate name, eg. `-r 1` is the same as `-r savestate_0001`.
  * `-s`      : Starts the machine immediately after launch.
  * `-t PATH` : MOO SingleStepTests file to execute.
+ * `-l PATH` : Use the specified file path for logging instead of the file in ibmulator.ini.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,7 +21,6 @@
 #define IBMULATOR_CPU_LOGGER_H
 
 #define CPULOG               false        // activate CPU logging?
-#define CPULOG_FILE          "cpulog.log" // log file name
 #if CPULOG
 #define CPULOG_MAX_SIZE      400000u      // number of instructions to log
 #else
