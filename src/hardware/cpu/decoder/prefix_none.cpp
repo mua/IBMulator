@@ -51,7 +51,6 @@ case 0x02:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADD_rb_eb;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -60,7 +59,6 @@ case 0x03:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADD_rw_ew;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -69,7 +67,6 @@ case 0x04:
 {
 	m_instr.ib = fetchb();
 	m_instr.fn = CPUExecutorFn::ADD_AL_ib;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -78,7 +75,6 @@ case 0x05:
 {
 	m_instr.iw1 = fetchw();
 	m_instr.fn = CPUExecutorFn::ADD_AX_iw;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -103,6 +99,7 @@ case 0x08:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::OR_eb_rb;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -111,6 +108,7 @@ case 0x09:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::OR_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -161,6 +159,7 @@ case 0x10:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADC_eb_rb;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -169,6 +168,7 @@ case 0x11:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADC_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -225,6 +225,7 @@ case 0x18:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::SBB_eb_rb;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -233,6 +234,7 @@ case 0x19:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::SBB_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -289,6 +291,7 @@ case 0x20:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::AND_eb_rb;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -297,6 +300,7 @@ case 0x21:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::AND_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -346,6 +350,7 @@ case 0x28:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::SUB_eb_rb;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -354,6 +359,7 @@ case 0x29:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::SUB_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -403,6 +409,7 @@ case 0x30:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::XOR_eb_rb;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -411,6 +418,7 @@ case 0x31:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::XOR_ew_rw;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -524,7 +532,6 @@ case 0x47: //DI
 {
 	m_instr.reg = _opcode - 0x40;
 	m_instr.fn = CPUExecutorFn::INC_rw_op;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -540,7 +547,6 @@ case 0x4F: //DI
 {
 	m_instr.reg = _opcode - 0x48;
 	m_instr.fn = CPUExecutorFn::DEC_rw_op;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -1098,7 +1104,6 @@ case 0x97: //DI
 {
 	m_instr.reg = _opcode - 0x90;
 	m_instr.fn = CPUExecutorFn::XCHG_AX_rw;
-	m_instr.is_lockable = true;
 	break;
 }
 

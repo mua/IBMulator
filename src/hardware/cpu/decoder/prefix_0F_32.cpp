@@ -272,7 +272,6 @@ case 0xA3:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::BT_ed_rd;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -417,7 +416,7 @@ case 0xBA:
 			illegal_opcode();
 			break;
 	}
-	m_instr.is_lockable = true;
+	m_instr.is_lockable = m_instr.modrm.n != 4;
 	ctb_op_ = m_instr.modrm.n;
 	ctb_idx_ = CTB_IDX_0FBA;
 	break;

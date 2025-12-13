@@ -49,7 +49,6 @@ case 0x03:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADD_rd_ed;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -61,7 +60,6 @@ case 0x05:
 {
 	m_instr.id1 = fetchdw();
 	m_instr.fn = CPUExecutorFn::ADD_EAX_id;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -89,6 +87,7 @@ case 0x09:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::OR_ed_rd;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -132,6 +131,7 @@ case 0x11:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::ADC_ed_rd;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -181,6 +181,7 @@ case 0x19:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::SBB_ed_rd;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -230,6 +231,7 @@ case 0x21:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::AND_ed_rd;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -268,6 +270,7 @@ case 0x29:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::SUB_ed_rd;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -306,6 +309,7 @@ case 0x31:
 {
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::XOR_ed_rd;
+	m_instr.is_lockable = true;
 	break;
 }
 
@@ -386,7 +390,6 @@ case 0x47: //EDI
 {
 	m_instr.reg = _opcode - 0x40;
 	m_instr.fn = CPUExecutorFn::INC_rd_op;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -402,7 +405,6 @@ case 0x4F: //EDI
 {
 	m_instr.reg = _opcode - 0x48;
 	m_instr.fn = CPUExecutorFn::DEC_rd_op;
-	m_instr.is_lockable = true;
 	break;
 }
 
@@ -743,7 +745,6 @@ case 0x97: //EDI
 {
 	m_instr.reg = _opcode - 0x90;
 	m_instr.fn = CPUExecutorFn::XCHG_EAX_rd;
-	m_instr.is_lockable = true;
 	break;
 }
 
