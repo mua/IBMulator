@@ -623,7 +623,7 @@ uint16_t CPUExecutor::BT_ew(uint16_t _op2, bool _rmw)
 	if(m_instr->modrm.mod == 3) {
 		op1 = GEN_REG(m_instr->modrm.rm).word[0];
 	} else {
-		uint32_t disp = ((uint16_t)(_op2&0xfff0)) / 16;
+		uint32_t disp = ((int16_t)(_op2&0xfff0)) / 16;
 		uint32_t op1_off = (this->*EA_get_offset)() + 2 * disp;
 		if(_rmw) {
 			op1 = read_word_rmw((this->*EA_get_segreg)(), op1_off & m_addr_mask);
@@ -644,7 +644,7 @@ uint32_t CPUExecutor::BT_ed(uint32_t _op2, bool _rmw)
 	if(m_instr->modrm.mod == 3) {
 		op1 = GEN_REG(m_instr->modrm.rm).dword[0];
 	} else {
-		uint32_t disp = ((uint32_t)(_op2&0xffffffe0)) / 32;
+		uint32_t disp = ((int32_t)(_op2&0xffffffe0)) / 32;
 		uint32_t op1_off = (this->*EA_get_offset)() + 4 * disp;
 		if(_rmw) {
 			op1 = read_dword_rmw((this->*EA_get_segreg)(), op1_off & m_addr_mask);
