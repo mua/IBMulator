@@ -621,6 +621,9 @@ case 0xB2:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::LSS_rw_mp;
+	if(m_instr.modrm.mod_is_reg()) {
+		illegal_opcode();
+	}
 	break;
 }
 
@@ -640,6 +643,9 @@ case 0xB4:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::LFS_rw_mp;
+	if(m_instr.modrm.mod_is_reg()) {
+		illegal_opcode();
+	}
 	break;
 }
 
@@ -649,6 +655,9 @@ case 0xB5:
 	ILLEGAL_286
 	m_instr.modrm.load(m_instr.addr32);
 	m_instr.fn = CPUExecutorFn::LGS_rw_mp;
+	if(m_instr.modrm.mod_is_reg()) {
+		illegal_opcode();
+	}
 	break;
 }
 
