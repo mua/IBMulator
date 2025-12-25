@@ -3690,7 +3690,11 @@ void CPUExecutor::POPAD()
 	// Discard ESP.
 	// Pentium+ Intel docs say the operation is a simple ESP += 4.
 	// On 386EX test data and 80386 / 80486 docs it's a Pop(), during which a #SS fault can happen.
-	stack_pop_dword();
+	uint32_t val_esp = stack_pop_dword();
+	if(!REG_SS.desc.big) {
+		// On real HW (386EX) ESP is actually loaded with the MSW of the value.
+		REG_ESP = (val_esp & 0xFFFF0000) | (REG_ESP & 0x0000FFFF);
+	}
 
 	REG_EBX = stack_pop_dword();
 	REG_EDX = stack_pop_dword();
