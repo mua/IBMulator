@@ -3660,58 +3660,44 @@ void CPUExecutor::POP_rd_op()
 
 void CPUExecutor::POPA()
 {
-	uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
+	SAVE_ESP();
 
-	uint16_t di = stack_read_word(sp+0);
-	uint16_t si = stack_read_word(sp+2);
-	uint16_t bp = stack_read_word(sp+4);
-	              stack_read_word(sp+6); //skip SP
-	uint16_t bx = stack_read_word(sp+8);
-	uint16_t dx = stack_read_word(sp+10);
-	uint16_t cx = stack_read_word(sp+12);
-	uint16_t ax = stack_read_word(sp+14);
+	REG_DI = stack_pop_word();
+	REG_SI = stack_pop_word();
+	REG_BP = stack_pop_word();
 
-	if(REG_SS.desc.big) {
-		REG_ESP += 16;
-	} else {
-		REG_SP += 16;
-	}
+	// Discard SP.
+	// Pentium+ Intel docs say the operation is a simple SP += 2.
+	// On 386EX test data and 80386 / 80486 docs it's a Pop(), during which a #SS fault can happen.
+	stack_pop_word();
 
-	REG_DI = di;
-	REG_SI = si;
-	REG_BP = bp;
-	REG_BX = bx;
-	REG_DX = dx;
-	REG_CX = cx;
-	REG_AX = ax;
+	REG_BX = stack_pop_word();
+	REG_DX = stack_pop_word();
+	REG_CX = stack_pop_word();
+	REG_AX = stack_pop_word();
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::POPAD()
 {
-	uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
+	SAVE_ESP();
 
-	uint32_t edi = stack_read_dword(sp+0);
-	uint32_t esi = stack_read_dword(sp+4);
-	uint32_t ebp = stack_read_dword(sp+8);
-	               stack_read_dword(sp+12); //skip ESP
-	uint32_t ebx = stack_read_dword(sp+16);
-	uint32_t edx = stack_read_dword(sp+20);
-	uint32_t ecx = stack_read_dword(sp+24);
-	uint32_t eax = stack_read_dword(sp+28);
+	REG_EDI = stack_pop_dword();
+	REG_ESI = stack_pop_dword();
+	REG_EBP = stack_pop_dword();
 
-	if(REG_SS.desc.big) {
-		REG_ESP += 32;
-	} else {
-		REG_SP += 32;
-	}
+	// Discard ESP.
+	// Pentium+ Intel docs say the operation is a simple ESP += 4.
+	// On 386EX test data and 80386 / 80486 docs it's a Pop(), during which a #SS fault can happen.
+	stack_pop_dword();
 
-	REG_EDI = edi;
-	REG_ESI = esi;
-	REG_EBP = ebp;
-	REG_EBX = ebx;
-	REG_EDX = edx;
-	REG_ECX = ecx;
-	REG_EAX = eax;
+	REG_EBX = stack_pop_dword();
+	REG_EDX = stack_pop_dword();
+	REG_ECX = stack_pop_dword();
+	REG_EAX = stack_pop_dword();
+
+	COMMIT_ESP();
 }
 
 
