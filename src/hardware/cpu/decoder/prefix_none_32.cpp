@@ -456,7 +456,11 @@ case 0x61:
 case 0x62:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = CPUExecutorFn::BOUND_rd_mq ;
+	if(m_instr.modrm.mod_is_reg()) {
+		illegal_opcode();
+	} else {
+		m_instr.fn = CPUExecutorFn::BOUND_rd_mq;
+	}
 	break;
 }
 

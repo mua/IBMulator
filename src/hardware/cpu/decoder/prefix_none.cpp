@@ -590,7 +590,7 @@ case 0x60:
 /* 61        POPA         Pop in order: DI,SI,BP,SP,BX,DX,CX,AX */
 case 0x61:
 {
-	m_instr.fn = CPUExecutorFn::POPA ;
+	m_instr.fn = CPUExecutorFn::POPA;
 	break;
 }
 
@@ -598,7 +598,11 @@ case 0x61:
 case 0x62:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	m_instr.fn = CPUExecutorFn::BOUND_rw_md ;
+	if(m_instr.modrm.mod_is_reg()) {
+		illegal_opcode();
+	} else {
+		m_instr.fn = CPUExecutorFn::BOUND_rw_md;
+	}
 	break;
 }
 
