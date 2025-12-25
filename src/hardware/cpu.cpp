@@ -612,6 +612,10 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 
 bool CPU::is_double_fault(uint8_t _first_vec, uint8_t _current_vec)
 {
+	if(IS_RMODE() && _current_vec == CPU_IDT_LIMIT_EXC) {
+		return true;
+	}
+
 	static const bool df_definition[3][3] = {
 		//          second exc
 		// BENIGN  CONTRIBUTORY  PAGE_FAULTS
@@ -882,6 +886,6 @@ void CPU::DOS_program_finish(std::string _name)
 
 void CPU::write_log()
 {
-	std::string filename = g_program.config().get_cfg_home() + FS_SEP CPULOG_FILE;
+	std::string filename = g_program.config().get_file(CPU_SECTION, CPU_LOG_FILE, FILE_TYPE_USER);
 	m_logger.dump(filename);
 }
