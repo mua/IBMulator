@@ -279,12 +279,18 @@ enum GenRegIndex32 {
 
 #define REG_IP (uint16_t(g_cpucore.get_EIP() & 0xFFFF))
 #define SET_IP(value) g_cpucore.set_EIP(value & 0xFFFF)
-#define RESTORE_IP g_cpucore.restore_EIP
 #define REG_EIP g_cpucore.get_EIP()
 #define SET_EIP(value) g_cpucore.set_EIP(value)
 #define COMMIT_EIP() g_cpucore.commit_EIP()
 #define RESTORE_EIP g_cpucore.restore_EIP
 #define CS_EIP g_cpucore.get_linaddr(REGI_CS, REG_EIP)
+
+
+// Stack pointer register
+
+#define SAVE_ESP g_cpucore.save_ESP
+#define COMMIT_ESP g_cpucore.commit_ESP
+#define RESTORE_ESP g_cpucore.restore_ESP
 
 
 // Debug Registers (386+)
@@ -370,6 +376,8 @@ protected:
 
 	// general registers
 	GenReg m_genregs[8];
+	GenReg m_prev_esp;
+	bool m_temp_esp;
 
 	// segment registers and TR, IDTR, LDTR, and GDTR for convenience
 	SegReg m_segregs[10];
@@ -412,6 +420,20 @@ public:
 	inline uint32_t ctl_reg(uint8_t idx) { assert(idx<4); return m_cr[idx]; }
 	inline uint32_t & dbg_reg(uint8_t idx) { assert(idx<8); return m_dr[idx]; }
 	inline uint32_t & test_reg(uint8_t idx) { assert(idx<8); return m_tr[idx]; }
+
+	void save_ESP() {
+		m_prev_esp = m_genregs[REGI_ESP];
+		m_temp_esp = true;
+	}
+	void commit_ESP() {
+		m_temp_esp = false;
+	}
+	void restore_ESP() {
+		if(m_temp_esp) {
+			m_genregs[REGI_ESP] = m_prev_esp;
+			m_temp_esp = false;
+		}
+	}
 
 	//only real mode:
 	inline void set_CS(uint16_t _val) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2023  Marco Bortolin
+ * Copyright (C) 2016-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -831,20 +831,28 @@ void CPUExecutor::CALL_ew()
 {
 	uint16_t new_IP = load_ew();
 
+	SAVE_ESP();
+
 	/* push 16 bit EA of next instruction */
 	stack_push_word(REG_IP);
 
 	branch_near(new_IP);
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::CALL_ed()
 {
 	uint32_t new_EIP = load_ed();
 
+	SAVE_ESP();
+
 	/* push 32 bit EA of next instruction */
 	stack_push_dword(REG_EIP);
 
 	branch_near(new_EIP);
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::CALL_ptr1616() { call_16(m_instr->iw2, m_instr->iw1); }
@@ -2034,6 +2042,8 @@ void CPUExecutor::IRET()
 	if(IS_PMODE()) {
 		iret_pmode(false);
 	} else {
+		SAVE_ESP();
+
 		// real and v8086 modes
 		if(IS_V8086() && (FLAG_IOPL < 3)) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRET: IOPL!=3 in v8086 mode\n");
@@ -2068,7 +2078,10 @@ void CPUExecutor::IRET()
 				true        // NT
 				);
 		}
+
+		COMMIT_ESP();
 	}
+
 	g_cpubus.invalidate_pq();
 }
 
@@ -2079,6 +2092,8 @@ void CPUExecutor::IRETD()
 	if(IS_PMODE()) {
 		iret_pmode(true);
 	} else {
+		SAVE_ESP();
+
 		// real and v8086 modes
 		if(IS_V8086() && (FLAG_IOPL < 3)) {
 			PDEBUGF(LOG_V2, LOG_CPU, "IRETD: IOPL!=3 in v8086 mode\n");
@@ -2106,7 +2121,10 @@ void CPUExecutor::IRETD()
 			true,       // NT,
 			false       // VM
 			);
+
+		COMMIT_ESP();
 	}
+
 	g_cpubus.invalidate_pq();
 }
 
@@ -3565,7 +3583,13 @@ void CPUExecutor::OUTSD_a32()
 
 void CPUExecutor::POP_SR_w()
 {
-	SET_SR(m_instr->reg, stack_pop_word());
+	SAVE_ESP();
+
+	uint16_t sel = stack_pop_word();
+	SET_SR(m_instr->reg, sel);
+
+	COMMIT_ESP();
+
 	if(m_instr->reg == REGI_SS) {
 		/* A POP SS instruction will inhibit all interrupts, including NMI, until
 		 * after the execution of the next instruction. This permits a POP SP
@@ -3577,16 +3601,57 @@ void CPUExecutor::POP_SR_w()
 
 void CPUExecutor::POP_SR_dw()
 {
-	SET_SR(m_instr->reg, stack_pop_dword());
+	SAVE_ESP();
+
+	uint32_t sel = stack_pop_dword();
+	SET_SR(m_instr->reg, sel);
+
+	COMMIT_ESP();
+
 	if(m_instr->reg == REGI_SS) {
 		g_cpu.inhibit_interrupts(CPU_INHIBIT_INTERRUPTS_BY_MOVSS);
 	}
 }
 
-void CPUExecutor::POP_mw()    { store_ew(stack_pop_word()); }
-void CPUExecutor::POP_md()    { store_ed(stack_pop_dword()); }
-void CPUExecutor::POP_rw_op() { store_rw_op(stack_pop_word()); }
-void CPUExecutor::POP_rd_op() { store_rd_op(stack_pop_dword()); }
+void CPUExecutor::POP_mw()
+{
+	SAVE_ESP();
+
+	uint16_t val = stack_pop_word();
+	store_ew(val);
+
+	COMMIT_ESP();
+}
+
+void CPUExecutor::POP_md()
+{
+	SAVE_ESP();
+
+	uint32_t val = stack_pop_dword();
+	store_ed(val);
+
+	COMMIT_ESP();
+}
+
+void CPUExecutor::POP_rw_op()
+{
+	SAVE_ESP();
+
+	uint16_t val = stack_pop_word();
+	store_rw_op(val);
+
+	COMMIT_ESP();
+}
+
+void CPUExecutor::POP_rd_op()
+{
+	SAVE_ESP();
+
+	uint32_t val = stack_pop_dword();
+	store_rd_op(val);
+
+	COMMIT_ESP();
+}
 
 
 /*******************************************************************************
@@ -3656,28 +3721,38 @@ void CPUExecutor::POPAD()
 
 void CPUExecutor::POPF()
 {
+	SAVE_ESP();
+
+	uint16_t flags = stack_pop_word();
+
 	if(IS_V8086() && (FLAG_IOPL < 3)) {
 		PDEBUGF(LOG_CPU, LOG_V2, "POPF: #GP(0) in v8086 mode\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	uint16_t flags = stack_pop_word();
 	write_flags(flags);
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::POPFD()
 {
+	SAVE_ESP();
+
+	uint16_t flags = uint16_t(stack_pop_dword());
+
 	/* POPF and POPFD don't affect bit 16 & 17 of EFLAGS, so use the
 	 * same write_flags as POPF
-	 * TODO this works only for the 386
+	 * TODO this works only for the 386, on 486 ID/AC are also affected
 	 */
 	if(IS_V8086() && (FLAG_IOPL < 3)) {
 		PDEBUGF(LOG_CPU, LOG_V2, "POPFD: #GP(0) in v8086 mode\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
-	uint16_t flags = uint16_t(stack_pop_dword());
 	write_flags(flags);
+
+	COMMIT_ESP();
 }
 
 
@@ -4157,16 +4232,30 @@ void CPUExecutor::RCR_ed_CL() { store_ed(RCR_d(load_ed(), REG_CL)); }
 
 void CPUExecutor::RET_near_o16()
 {
-	return_near(stack_pop_word(), m_instr->iw1);
+	SAVE_ESP();
+
+	uint16_t new_IP = stack_pop_word();
+
+	return_near(new_IP, m_instr->iw1);
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::RET_near_o32()
 {
-	return_near(stack_pop_dword(), m_instr->iw1);
+	SAVE_ESP();
+
+	uint32_t new_EIP = stack_pop_dword();
+
+	return_near(new_EIP, m_instr->iw1);
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::RET_far_o16()
 {
+	SAVE_ESP();
+
 	if(IS_PMODE()) {
 		return_far_pmode(m_instr->iw1, false);
 	} else {
@@ -4175,10 +4264,14 @@ void CPUExecutor::RET_far_o16()
 
 		return_far_rmode(cs_raw, ip, m_instr->iw1);
 	}
+	
+	COMMIT_ESP();
 }
 
 void CPUExecutor::RET_far_o32()
 {
+	SAVE_ESP();
+
 	if(IS_PMODE()) {
 		return_far_pmode(m_instr->iw1, true);
 	} else {
@@ -4187,6 +4280,8 @@ void CPUExecutor::RET_far_o32()
 
 		return_far_rmode(cs_raw, eip, m_instr->iw1);
 	}
+
+	COMMIT_ESP();
 }
 
 

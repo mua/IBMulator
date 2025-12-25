@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,6 +43,8 @@ void CPUCore::reset()
 	memset(m_genregs, 0, sizeof(GenReg)*8);
 	memset(m_segregs, 0, sizeof(SegReg)*10);
 
+	m_prev_esp.dword[0] = 0u;
+	m_temp_esp = false;
 	m_eflags = 0x00000002;
 	m_cr[0] = 0x0;
 	m_cr[2] = 0x0;

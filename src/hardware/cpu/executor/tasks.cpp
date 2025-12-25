@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2016-2020  Marco Bortolin
+ * Copyright (C) 2001-2014  The Bochs Project
+ * Copyright (C) 2016-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -367,6 +368,8 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	REG_ESI = newESI;
 	REG_EDI = newEDI;
 
+	COMMIT_ESP();
+
 	SET_EFLAGS(newEFLAGS);
 
 	// Fill in selectors for all segment registers.  If errors
@@ -570,6 +573,8 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 	//
 	PDEBUGF(LOG_V2, LOG_CPU, "TASKING: LEAVE\n");
 
+	SAVE_ESP();
+
 	// push error code onto stack
 	if(push_error) {
 		if(descriptor.is_386_system()) {
@@ -584,6 +589,8 @@ void CPUExecutor::switch_tasks(Selector &selector, Descriptor &descriptor,
 		PERRF(LOG_CPU,"switch_tasks: EIP > CS.limit\n");
 		throw CPUException(CPU_GP_EXC, 0);
 	}
+
+	COMMIT_ESP();
 
 	g_cpubus.invalidate_pq();
 }

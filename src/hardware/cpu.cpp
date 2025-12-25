@@ -599,6 +599,8 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 		throw CPUException(CPU_GP_EXC, 0);
 	}
 
+	SAVE_ESP();
+
 	if(IS_RMODE()) {
 		// real mode
 		g_cpuexecutor.interrupt(_vector);
@@ -606,6 +608,8 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 		// protected and v8086 modes
 		g_cpuexecutor.interrupt_pmode(_vector, soft_int, _push_error, _error_code);
 	}
+
+	COMMIT_ESP();
 
 	m_s.EXT = false;
 }
@@ -704,7 +708,8 @@ void CPU::exception(CPUException _exc)
 		/* The CS and EIP values saved when a fault is reported point to the instruction
 		 * causing the fault.
 		 */
-		RESTORE_IP();
+		RESTORE_EIP();
+		RESTORE_ESP();
 		if(m_family >= CPU_386) {
 			// The processor automatically sets RF in the EFLAGS image on the
 			// stack before entry into any FAULT handler except a debug

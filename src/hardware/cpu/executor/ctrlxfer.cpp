@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2025  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -381,6 +381,8 @@ void CPUExecutor::call_relative(int32_t _offset)
 {
 	uint32_t new_EIP;
 
+	SAVE_ESP();
+
 	if(m_instr->op32) {
 		stack_push_dword(REG_EIP);
 		new_EIP = REG_EIP + _offset;
@@ -390,44 +392,54 @@ void CPUExecutor::call_relative(int32_t _offset)
 	}
 
 	branch_near(new_EIP);
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::call_16(uint16_t _cs, uint16_t _ip)
 {
+	SAVE_ESP();
+
 	if(IS_PMODE()) {
 		call_pmode(_cs, _ip);
-		return;
+	} else {
+		//REAL mode
+		// CS LIMIT can't change when in real mode
+		if(_ip > GET_LIMIT(CS)) {
+			PDEBUGF(LOG_V2, LOG_CPU, "CALL_cd: instruction pointer not within code segment limits\n");
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+		stack_push_word(REG_CS.sel.value);
+		stack_push_word(REG_IP);
+		SET_CS(_cs);
+		SET_IP(_ip);
+		g_cpubus.invalidate_pq();
 	}
-	//REAL mode
-	// CS LIMIT can't change when in real mode
-	if(_ip > GET_LIMIT(CS)) {
-		PDEBUGF(LOG_V2, LOG_CPU, "CALL_cd: instruction pointer not within code segment limits\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
-	stack_push_word(REG_CS.sel.value);
-	stack_push_word(REG_IP);
-	SET_CS(_cs);
-	SET_IP(_ip);
-	g_cpubus.invalidate_pq();
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::call_32(uint16_t _cs, uint32_t _eip)
 {
+	SAVE_ESP();
+
 	if(IS_PMODE()) {
 		call_pmode(_cs, _eip);
-		return;
+	} else {
+		//REAL mode
+		// CS LIMIT can't change when in real mode
+		if(_eip > GET_LIMIT(CS)) {
+			PDEBUGF(LOG_V2, LOG_CPU, "CALL_cd: instruction pointer not within code segment limits\n");
+			throw CPUException(CPU_GP_EXC, 0);
+		}
+		stack_push_dword(REG_CS.sel.value);
+		stack_push_dword(REG_EIP);
+		SET_CS(_cs);
+		SET_EIP(_eip);
+		g_cpubus.invalidate_pq();
 	}
-	//REAL mode
-	// CS LIMIT can't change when in real mode
-	if(_eip > GET_LIMIT(CS)) {
-		PDEBUGF(LOG_V2, LOG_CPU, "CALL_cd: instruction pointer not within code segment limits\n");
-		throw CPUException(CPU_GP_EXC, 0);
-	}
-	stack_push_dword(REG_CS.sel.value);
-	stack_push_dword(REG_EIP);
-	SET_CS(_cs);
-	SET_EIP(_eip);
-	g_cpubus.invalidate_pq();
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::call_pmode(uint16_t cs_raw, uint32_t disp)
