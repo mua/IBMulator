@@ -1322,6 +1322,8 @@ void CPUExecutor::ENTER_o16()
 	uint8_t nesting_level = m_instr->ib & 0x1F;
 	uint16_t   alloc_size = m_instr->iw1;
 
+	SAVE_ESP();
+
 	stack_push_word(REG_BP);
 	uint16_t frame_ptr = REG_SP;
 
@@ -1363,12 +1365,16 @@ void CPUExecutor::ENTER_o16()
 	}
 
 	REG_BP = frame_ptr;
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::ENTER_o32()
 {
 	uint8_t nesting_level = m_instr->ib & 0x1F;
 	uint16_t   alloc_size = m_instr->iw1;
+
+	SAVE_ESP();
 
 	stack_push_dword(REG_EBP);
 	uint32_t frame_ptr = REG_ESP;
@@ -1411,6 +1417,8 @@ void CPUExecutor::ENTER_o32()
 	}
 
 	REG_EBP = frame_ptr;
+
+	COMMIT_ESP();
 }
 
 
