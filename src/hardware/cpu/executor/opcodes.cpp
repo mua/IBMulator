@@ -2403,22 +2403,30 @@ void CPUExecutor::LEA_rd_m()
 
 void CPUExecutor::LEAVE_o16()
 {
+	SAVE_ESP();
+
 	if(REG_SS.desc.big) {
 		REG_ESP = REG_EBP;
 	} else {
 		REG_SP = REG_BP;
 	}
 	REG_BP = stack_pop_word();
+
+	COMMIT_ESP();
 }
 
 void CPUExecutor::LEAVE_o32()
 {
+	SAVE_ESP();
+
 	if(REG_SS.desc.big) {
 		REG_ESP = REG_EBP;
 	} else {
 		REG_SP = REG_BP;
 	}
 	REG_EBP = stack_pop_dword();
+
+	COMMIT_ESP();
 }
 
 
