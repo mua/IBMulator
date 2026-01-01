@@ -1464,13 +1464,12 @@ void CPUExecutor::HLT()
 void CPUExecutor::IDIV_eb()
 {
 	int16_t op1 = int16_t(REG_AX);
+	int8_t op2 = int8_t(load_eb());
 
 	/* check MIN_INT case */
 	if(op1 == int16_t(0x8000)) {
 		throw CPUException(CPU_DIV_ER_EXC, 0);
 	}
-
-	int8_t op2 = int8_t(load_eb());
 
 	if(op2 == 0) {
 		throw CPUException(CPU_DIV_ER_EXC, 0);
@@ -1492,13 +1491,12 @@ void CPUExecutor::IDIV_eb()
 void CPUExecutor::IDIV_ew()
 {
 	int32_t op1_32 = int32_t((uint32_t(REG_DX) << 16) | uint32_t(REG_AX));
+	int16_t op2_16 = int16_t(load_ew());
 
 	/* check MIN_INT case */
 	if(op1_32 == int32_t(0x80000000)) {
 		throw CPUException(CPU_DIV_ER_EXC, 0);
 	}
-
-	int16_t op2_16 = int16_t(load_ew());
 
 	if(op2_16 == 0) {
 		throw CPUException(CPU_DIV_ER_EXC, 0);
@@ -1520,13 +1518,12 @@ void CPUExecutor::IDIV_ew()
 void CPUExecutor::IDIV_ed()
 {
 	int64_t op1_64 = int64_t((uint64_t(REG_EDX) << 32) | uint64_t(REG_EAX));
+	int32_t op2_32 = int32_t(load_ed());
 
 	/* check MIN_INT case */
 	if(op1_64 == int64_t(0x8000000000000000LL)) {
 		throw CPUException(CPU_DIV_ER_EXC, 0);
 	}
-
-	int32_t op2_32 = int32_t(load_ed());
 
 	if(op2_32 == 0) {
 		throw CPUException(CPU_DIV_ER_EXC, 0);
