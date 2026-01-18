@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -114,10 +114,23 @@ uint32_t CPUExecutor::EA_get_offset_32()
 		}
 	} else {
 		// SIB
+		// scaled index
 		if(m_instr->modrm.index != 4) {
 			offset += GEN_REG(m_instr->modrm.index).dword[0] * (1 << m_instr->modrm.scale);
+		} else if(UNLIKELY(m_instr->modrm.scale != 0)) {
+			// UNDEFINED case with Index = 4 and SS != 0 
+			// i386: in the absence of an index register the scale factor is applied to the base register
+			if(m_instr->modrm.base != 5 || m_instr->modrm.mod != 0) {
+				return offset + GEN_REG(m_instr->modrm.base).dword[0] * (1 << m_instr->modrm.scale);
+			} else {
+				// Base = 5 and MOD = 0
+				// When MOD is 0 scaled EBP is not added.
+				return offset;
+			}
 		}
+		// base
 		if(m_instr->modrm.base != 5 || m_instr->modrm.mod != 0) {
+			// if MOD is 0 EBP is not added
 			offset += GEN_REG(m_instr->modrm.base).dword[0];
 		}
 	}
