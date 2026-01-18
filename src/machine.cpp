@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -1222,7 +1222,7 @@ void Machine::cmd_run_test(const MachineTest &_test, std::promise<MachineTestRes
 	m_cmd_queue.push([&](){
 
 		// REAL MODE ASSUMED
-		// called shall verify that this is the case
+		// caller shall verify that this is the case
 		MachineTestResult result;
 
 		m_on = true;
@@ -1292,14 +1292,27 @@ void Machine::cmd_run_test(const MachineTest &_test, std::promise<MachineTestRes
 			g_memory.dbg_write_byte(m.address, m.value);
 		}
 
-		uint32_t timeout = 100'000;
+		uint32_t timeout = 128;
+		size_t l0 = g_cpu.get_logger().get_log_size();
 		while(g_cpu.get_activity_state() == CPU_STATE_ACTIVE && timeout--) {
 
 			core_step(0);
 
-			if(g_cpu.get_last_i_exception().vector != CPU_INVALID_INT) {
+			if(g_cpu.get_last_soft_int() != -1) {
+				result.exception.number = g_cpu.get_last_soft_int();
+				result.has_exception = true;
+				result.has_soft_int = true;
+			} else if(g_cpu.get_last_i_exception().vector != CPU_INVALID_INT) {
 				result.exception.number = g_cpu.get_last_i_exception().vector;
 				result.has_exception = true;
+			}
+		}
+		size_t l1 = g_cpu.get_logger().get_log_size();
+
+		if(l1 - l0) {
+			result.has_cpu_log = true;
+			for(size_t l=l0; l<l1; l++) {
+				result.cpu_log.push_back(g_cpu.get_logger().get_log_entry(l));
 			}
 		}
 

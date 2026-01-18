@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -60,6 +60,41 @@
 
 class Memory;
 extern Memory g_memory;
+
+
+#define MEM_LOG_SIZE 150
+
+class MemoryLogger
+{
+public:
+	struct LogData {
+		uint32_t operation;
+		uint32_t size;
+		uint32_t phy_addr;
+		uint32_t data;
+	};
+	enum Operation {
+		MEMR, // read data
+		MEMW, // write data
+		CODE  // code fetch
+	};
+	using MemLog = std::array<LogData,MEM_LOG_SIZE>;
+
+protected:
+	MemLog m_log;
+	size_t m_log_size = 0;
+
+public:
+	void push_back(const LogData &_data) {
+		if(m_log_size < MEM_LOG_SIZE) {
+			m_log[m_log_size++] = _data;
+		}
+	}
+	const MemLog & get_log() const { return m_log; }
+	size_t get_log_size() const { return m_log_size; }
+	void clear_log() { m_log_size = 0; }
+};
+
 
 #define MEM_TRAP_READ  0x1
 #define MEM_TRAP_WRITE 0x2
@@ -149,6 +184,8 @@ protected:
 
 	bool m_test_mode = false;
 
+	std::unique_ptr<MemoryLogger> m_logger;
+
 public:
 	Memory();
 	~Memory();
@@ -206,14 +243,16 @@ public:
 	static void s_debug_trap_ASCII(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
 	static void s_debug_40h_trap(uint32_t _address, uint8_t _rw, uint32_t _value, uint8_t _len);
 
+	MemoryLogger & logger() const { return *m_logger.get(); }
+
 private:
 	void remap(uint32_t _start, uint32_t _end);
 
 	// read functions for CPUBus
 	template<unsigned LEN> inline
-	uint32_t read(uint32_t _address, int &_cycles) const noexcept
+	uint32_t read(uint32_t _address, int &_cycles, bool _code=false) const noexcept
 	{
-		return read_mapped<LEN>(_address, _cycles);
+		return read_mapped<LEN>(_address, _cycles, _code);
 	}
 	template<unsigned LEN> inline
 	uint32_t read_t(uint32_t _address, unsigned _trap_len, int &_cycles) const noexcept
@@ -228,7 +267,7 @@ private:
 		#endif
 	}
 	template<unsigned LEN>
-	uint32_t read_mapped(uint32_t _address, int &_cycles) const noexcept { assert(false); return ~0; }
+	uint32_t read_mapped(uint32_t _address, int &_cycles, bool _code=false) const noexcept { assert(false); return ~0; }
 
 
 	// write functions for CPUBus
@@ -296,9 +335,9 @@ template<> inline void Memory::s_write<uint32_t>(uint32_t _addr, uint32_t _value
 	((Memory*)_priv)->m_ram.buffer[_addr + 3] = _value >> 24;
 }
 
-template<> uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles) const noexcept;
-template<> uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles) const noexcept;
-template<> uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles) const noexcept;
+template<> uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles, bool _code) const noexcept;
+template<> uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles, bool _code) const noexcept;
+template<> uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles, bool _code) const noexcept;
 
 template<> void Memory::write_mapped<1>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept;
 template<> void Memory::write_mapped<2>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept;

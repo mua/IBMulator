@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -25,7 +25,6 @@
 #define DEFAULT_HEARTBEAT    16683333
 #define CHRONO_RDTSC         false
 
-// For CPU logging options see hardware/cpu/logger.h
 
 #include "config.h"
 #include <cstdint>
@@ -60,6 +59,7 @@
 	#define STOP_AT_POST_CODE 0      // POST code to pause emulation at. 0 to disable.
 	#define UD6_AUTO_DUMP     false  // automatic memory dump at #UD exception
 	#define BOCHS_BIOS_COMPAT false  // enable legacy Bochs' BIOS compatibility
+	#define CPULOG            false  // activate CPU logging?
 
 	#define LOG_DEBUG_MESSAGES    true   // enable debug messages logging
 	#define LOG_MACHINE_TIME      true   // enable machine time logging
@@ -82,6 +82,7 @@
 	#define STOP_AT_POST_CODE 0
 	#define UD6_AUTO_DUMP     false
 	#define BOCHS_BIOS_COMPAT false
+	#define CPULOG            false
 
 	#define LOG_DEBUG_MESSAGES    false
 	#define LOG_MACHINE_TIME      false
@@ -101,6 +102,35 @@
 		#include <cassert>
 	#endif
 #endif
+
+
+// 
+// CPU logging options.
+// 
+#if CPULOG
+#define CPULOG_MAX_SIZE      400000u    // number of instructions to log
+#else
+#define CPULOG_MAX_SIZE      1u
+#endif
+#define CPULOG_WRITE_TIME    true       // write instruction machine time?
+#define CPULOG_WRITE_CSEIP   true       // write instruction address as CS:EIP?
+#define CPULOG_WRITE_HEX     true       // write instruction as hex codes?
+#define CPULOG_WRITE_DISASM  true       // write the disassembled instruction?
+#define CPULOG_WRITE_STATE   true       // write the CPU global state?
+#define CPULOG_WRITE_CORE    true       // write the CPU registers?
+#define CPULOG_DECODE_FLAGS  true       // decode flags register into a string
+#define CPULOG_WRITE_SEGREGS true       // write extended seg regs status? (only if CPULOG_WRITE_CORE is true)
+#define CPULOG_WRITE_PQ      false      // write the prefetch queue?
+#define CPULOG_WRITE_TIMINGS false      // write various timing values?
+#define CPULOG_WRITE_BUSACC  true       // write bus access operations?
+#define CPULOG_START_ADDR    0x0        // lower bound, instr. before this address are not logged
+#define CPULOG_END_ADDR      0xFFFFFFFF // upper bound, instr. after this address are not logged
+#define CPULOG_LOG_INTS      true       // log INTs' instructions?
+#define CPULOG_INT21_EXIT_IP -1         // the OS dependent IP of the last instr. of INT 21/4B
+                                        // For PC-DOS 4.01 under ROMSHELL is 0x7782,
+                                        //                 under plain DOS is 0x7852
+                                        // use -1 to disable (logging starts at INT call)
+#define CPULOG_COUNTERS      false      // count every instruction executed
 
 
 #include "syslog.h"

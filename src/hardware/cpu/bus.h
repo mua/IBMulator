@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -65,6 +65,9 @@ private:
 	wq_data m_write_queue[CPU_BUS_WQ_SIZE];
 	int m_wq_idx = -1;
 
+	// many copies of CPUBus can exist in the CPULogger
+	std::shared_ptr<MemoryLogger> m_logger;
+
 public:
 	CPUBus();
 
@@ -118,7 +121,13 @@ public:
 
 	template<unsigned S> inline uint32_t mem_read(uint32_t _addr)
 	{
+		#if CPULOG
+		uint32_t value = p_mem_read<S>(_addr, m_mem_r_cycles);
+		m_logger->push_back({ MemoryLogger::MEMR, S, _addr, value });
+		return value;
+		#else
 		return p_mem_read<S>(_addr, m_mem_r_cycles);
+		#endif
 	}
 	template<unsigned S> inline void mem_write(uint32_t _addr, uint32_t _data)
 	{
@@ -134,12 +143,17 @@ public:
 		#else
 		p_mem_write<S>(_addr, _data, m_mem_w_cycles);
 		#endif
+		#if CPULOG
+		m_logger->push_back({ MemoryLogger::MEMW, S, _addr, _data });
+		#endif
 	}
 
 	void save_state(StateBuf &_state);
 	void restore_state(StateBuf &_state);
 
 	int write_pq_to_logfile(FILE *_dest);
+
+	MemoryLogger & logger() const { return *m_logger.get(); }
 
 private:
 	template<unsigned> uint32_t p_mem_read(uint32_t _addr, int &_cycles) { assert(false); return 0; }

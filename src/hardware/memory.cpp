@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -49,6 +49,8 @@ Memory::Memory()
 	memset(m_s.mapstate, MEM_ANY, sizeof(m_s.mapstate));
 
 	remap(0, 0xFFFFFFFF);
+
+	m_logger = std::make_unique<MemoryLogger>();
 }
 
 Memory::~Memory()
@@ -310,62 +312,82 @@ void Memory::set_A20_line(bool _enabled)
 }
 
 template<>
-uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles) const noexcept
+uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles, bool _code) const noexcept
 {
 	_addr &= m_s.mask;
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].read;
+	uint32_t value = 0xFF;
 	if(map->read.byte) {
 		_cycles += map->cycles.byte;
-		return map->read.byte(_addr, map->read.priv);
+		value = map->read.byte(_addr, map->read.priv);
 	}
-	return 0xFF;
+	#if CPULOG
+	m_logger->push_back({_code ? MemoryLogger::CODE : MemoryLogger::MEMR, 1, _addr, value});
+	#endif
+	return value;
 }
 
 template<>
-uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles) const noexcept
+uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles, bool _code) const noexcept
 {
 	_addr &= m_s.mask;
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].read;
+	uint32_t value = 0xFFFF;
 	if(map->read.word) {
 		if((_addr&0x1) && (map->flags&MEM_MAPPING_EXTERNAL)) {
 			/* 16bit external bus
 			 * this is the case for 32-bit bus CPU for odd aligned words inside
 			 * dword boundaries
 			 */
-			return (
+			value = (
 				read_mapped<1>(_addr,   _cycles) |
 				read_mapped<1>(_addr+1, _cycles) << 8
 			);
+		} else {
+			// if odd address then it must be 32-bit internal bus
+			_cycles += map->cycles.word;
+			value = map->read.word(_addr, map->read.priv);
 		}
-		// if odd address then it must be 32-bit internal bus
-		_cycles += map->cycles.word;
-		return map->read.word(_addr, map->read.priv);
+	} else {
+		value = (
+			read_mapped<1>(_addr,   _cycles) |
+			read_mapped<1>(_addr+1, _cycles) << 8
+		);
 	}
-	return (
-		read_mapped<1>(_addr,   _cycles) |
-		read_mapped<1>(_addr+1, _cycles) << 8
-	);
+	#if CPULOG
+	m_logger->push_back({_code ? MemoryLogger::CODE : MemoryLogger::MEMR, 2, _addr, value});
+	#endif
+	return value;
 }
 
 template<>
-uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles) const noexcept
+uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles, bool _code) const noexcept
 {
 	_addr &= m_s.mask;
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].read;
+	uint32_t value = 0xFFFFFFFF;
 	if(map->read.dword) {
 		_cycles += map->cycles.dword;
-		return map->read.dword(_addr, map->read.priv);
+		value = map->read.dword(_addr, map->read.priv);
+	} else {
+		value = (
+			read_mapped<2>(_addr,   _cycles) |
+			read_mapped<2>(_addr+2, _cycles) << 16
+		);
 	}
-	return (
-		read_mapped<2>(_addr,   _cycles) |
-		read_mapped<2>(_addr+2, _cycles) << 16
-	);
+	#if CPULOG
+	m_logger->push_back({_code ? MemoryLogger::CODE : MemoryLogger::MEMR, 4, _addr, value});
+	#endif
+	return value;
 }
 
 template<>
 void Memory::write_mapped<1>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
 {
 	_addr &= m_s.mask;
+	#if CPULOG
+	m_logger->push_back({MemoryLogger::MEMW, 1, _addr, _data});
+	#endif
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].write;
 	if(map->write.byte) {
 		_cycles += map->cycles.byte;
@@ -377,6 +399,9 @@ template<>
 void Memory::write_mapped<2>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
 {
 	_addr &= m_s.mask;
+	#if CPULOG
+	m_logger->push_back({MemoryLogger::MEMW, 2, _addr, _data});
+	#endif
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].write;
 	if(map->write.word) {
 		if((_addr&0x1) && (map->flags&MEM_MAPPING_EXTERNAL)) {
@@ -401,6 +426,9 @@ template<>
 void Memory::write_mapped<4>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
 {
 	_addr &= m_s.mask;
+	#if CPULOG
+	m_logger->push_back({MemoryLogger::MEMW, 4, _addr, _data});
+	#endif
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].write;
 	if(map->write.dword) {
 		_cycles += map->cycles.dword;

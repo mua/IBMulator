@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -207,6 +207,7 @@ uint CPU::step()
 
 	g_cpubus.reset_counters();
 
+	m_soft_int_vector = -1;
 	m_exception = { CPU_INVALID_INT, 0 };
 	m_cycles = { 0,0,0,0,0,0 };
 
@@ -320,16 +321,21 @@ uint CPU::step()
 	}
 	tot_cycles += m_cycles.refresh;
 
-	if(CPULOG && do_log) {
-		m_logger.add_entry(
-			g_machine.get_virt_time_ns(), // time
-			*m_instr,                     // instruction
-			state_log,                    // state
-			m_exception,                  // cpu exception?
-			core_log,                     // core
-			g_cpubus,                     // bus
-			m_cycles                      // cycles used
-		);
+	if(CPULOG) {
+		if(do_log) {
+			m_logger.add_entry(
+				g_machine.get_virt_time_ns(), // time
+				*m_instr,                     // instruction
+				state_log,                    // state
+				m_exception,                  // cpu exception?
+				core_log,                     // core
+				g_cpubus,                     // cpu bus
+				g_memory.logger(),            // main memory activity
+				m_cycles                      // cycles used
+			);
+		}
+		g_cpubus.logger().clear_log();
+		g_memory.logger().clear_log();
 	}
 
 	m_s.icount++;
@@ -559,6 +565,7 @@ void CPU::interrupt(uint8_t _vector, unsigned _type, bool _push_error, uint16_t 
 		case CPU_SOFTWARE_INTERRUPT:
 		case CPU_SOFTWARE_EXCEPTION:
 			soft_int = true;
+			m_soft_int_vector = _vector;
 			break;
 		case CPU_PRIVILEGED_SOFTWARE_INTERRUPT:
 			typestr = "PRIVILEGED SOFTWARE";

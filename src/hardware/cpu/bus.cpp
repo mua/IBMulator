@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -39,6 +39,7 @@ CPUBus::CPUBus()
 
 void CPUBus::init()
 {
+	m_logger = std::make_shared<MemoryLogger>();
 }
 
 void CPUBus::reset()
@@ -162,7 +163,11 @@ template<int len>
 uint32_t CPUBus::mmu_read(uint32_t _linear, int &_cycles)
 {
 	uint32_t phy = g_cpummu.TLB_lookup(_linear, len, IS_USER_PL, false);
-	return g_memory.read<len>(phy, _cycles);
+	uint32_t value = g_memory.read<len>(phy, _cycles, true);
+	#if CPULOG
+	m_logger->push_back({ MemoryLogger::CODE, len, phy, value });
+	#endif
+	return value;
 }
 
 template<int bytes, bool paging>
@@ -245,30 +250,45 @@ int CPUBus::fill_pq(int _amount, int _cycles, bool _paddress)
 				}
 			}
 		} else {
+			uint32_t value;
 			switch(adv) {
 				default: assert(false); break;
 				case 2:  { // word aligned
-					uint16_t v = g_memory.read<2>(m_s.pq_tail, c);
-					*pq_ptr = v;
-					*(pq_ptr + 1) = v >> 8;
+					value = g_memory.read<2>(m_s.pq_tail, c, true);
+					#if CPULOG
+					m_logger->push_back({ MemoryLogger::CODE, 2, m_s.pq_tail, value });
+					#endif
+					*pq_ptr = value;
+					*(pq_ptr + 1) = value >> 8;
 					break;
 				}
-				case 1: // 1-byte unaligned (right)
-					*pq_ptr = g_memory.read<1>(m_s.pq_tail, c);
+				case 1: { // 1-byte misaligned (right)
+					value = g_memory.read<1>(m_s.pq_tail, c, true);
+					#if CPULOG
+					m_logger->push_back({ MemoryLogger::CODE, 1, m_s.pq_tail, value });
+					#endif
+					*pq_ptr = value;
 					break;
+				}
 				case 4: { // dword aligned
-					uint32_t v = g_memory.read<4>(m_s.pq_tail, c);
-					*pq_ptr = v;
-					*(pq_ptr + 1) = v >> 8;
-					*(pq_ptr + 2) = v >> 16;
-					*(pq_ptr + 3) = v >> 24;
+					value = g_memory.read<4>(m_s.pq_tail, c, true);
+					#if CPULOG
+					m_logger->push_back({ MemoryLogger::CODE, 4, m_s.pq_tail, value });
+					#endif
+					*pq_ptr = value;
+					*(pq_ptr + 1) = value >> 8;
+					*(pq_ptr + 2) = value >> 16;
+					*(pq_ptr + 3) = value >> 24;
 					break;
 				}
-				case 3: { // 1-byte unaligned (left)
-					uint32_t v = g_memory.read<4>(m_s.pq_tail-1, c);
-					*pq_ptr = v >> 8;
-					*(pq_ptr + 1) = v >> 16;
-					*(pq_ptr + 2) = v >> 24;
+				case 3: { // 1-byte misaligned (left)
+					value = g_memory.read<4>(m_s.pq_tail-1, c, true);
+					#if CPULOG
+					m_logger->push_back({ MemoryLogger::CODE, 4, m_s.pq_tail-1, value });
+					#endif
+					*pq_ptr = value >> 8;
+					*(pq_ptr + 1) = value >> 16;
+					*(pq_ptr + 2) = value >> 24;
 					break;
 				}
 			}

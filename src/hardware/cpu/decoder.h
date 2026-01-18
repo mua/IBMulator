@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -94,13 +94,19 @@ public:
 	uint8_t base;
 	uint32_t disp;
 
-	ModRM() = default;
-	inline void load(bool _32bit=false);
+	bool is_valid;
+	bool has_sib;
 
-	inline bool mod_is_reg() { return mod == 3; }
+	ModRM() = default;
+
+	void load(bool _32bit=false);
+	void load(const std::vector<uint8_t> &_bytes, size_t &_pos, bool _32bit);
+
+	bool mod_is_reg() const { return mod == 3; }
 
 private:
-	inline void load_SIB();
+	void load_SIB();
+	void load_SIB(const std::vector<uint8_t> &_bytes, size_t &_pos);
 };
 
 struct Cycles
@@ -252,6 +258,7 @@ inline void ModRM::load_SIB()
 	scale = (sib >> 6) & 3;
 	index = (sib >> 3) & 7;
 	base = sib & 7;
+	has_sib = true;
 }
 
 inline void ModRM::load(bool _32bit)
@@ -293,7 +300,67 @@ inline void ModRM::load(bool _32bit)
 			disp = g_cpudecoder.fetchw();
 		}
 	}
+	is_valid = true;
 }
 
+inline void ModRM::load_SIB(const std::vector<uint8_t> &_bytes, size_t &_pos)
+{
+	uint8_t sib = _bytes[_pos];
+	_pos++;
+	scale = (sib >> 6) & 3;
+	index = (sib >> 3) & 7;
+	base = sib & 7;
+	has_sib = true;
+}
+
+inline void ModRM::load(const std::vector<uint8_t> &_bytes, size_t &_pos, bool _32bit)
+{
+	uint8_t modrm = _bytes[_pos];
+	_pos++;
+	mod = (modrm >> 6) & 3;
+	r = (modrm >> 3) & 7;
+	rm = modrm & 7;
+	disp = 0;
+	if(_32bit) {
+		if(mod == 0) {
+			if(rm == 4) {
+				load_SIB(_bytes, _pos);
+				if(base == 5) {
+					disp = *(uint32_t*)&_bytes[_pos];
+					_pos += 4;
+				}
+			} else if(rm == 5) {
+				disp = *(uint32_t*)&_bytes[_pos];
+				_pos += 4;
+			}
+		} else if(mod == 1) {
+			if(rm == 4) {
+				load_SIB(_bytes, _pos);
+			}
+			disp = int8_t(_bytes[_pos]);
+			_pos++;
+		} else if(mod == 2) {
+			if(rm == 4) {
+				load_SIB(_bytes, _pos);
+			}
+			disp = *(uint32_t*)&_bytes[_pos];
+			_pos += 4;
+		}
+	} else {
+		if(mod==0 && rm==6) {
+			disp = *(uint16_t*)&_bytes[_pos];
+			_pos += 2;
+		} else if(mod==0 || mod==3) {
+			disp = 0;
+		} else if(mod==1) {
+			disp = int8_t(_bytes[_pos]);
+			_pos++;
+		} else if(mod==2) {
+			disp = *(uint16_t*)&_bytes[_pos];
+			_pos += 2;
+		}
+	}
+	is_valid = true;
+}
 
 #endif

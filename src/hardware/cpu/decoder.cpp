@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -36,6 +36,8 @@ Instruction * CPUDecoder::decode()
 	m_instr.fn = CPUExecutorFn::INVALID;
 	m_instr.op32 = REG_CS.desc.big;
 	m_instr.addr32 = REG_CS.desc.big;
+	m_instr.modrm.is_valid = false;
+	m_instr.modrm.has_sib = false;
 	m_instr.rep = false;
 	m_instr.rep_zf = false;
 	m_instr.rep_equal = false;

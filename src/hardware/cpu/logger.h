@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -20,31 +20,6 @@
 #ifndef IBMULATOR_CPU_LOGGER_H
 #define IBMULATOR_CPU_LOGGER_H
 
-#define CPULOG               false        // activate CPU logging?
-#if CPULOG
-#define CPULOG_MAX_SIZE      400000u      // number of instructions to log
-#else
-#define CPULOG_MAX_SIZE      1u
-#endif
-#define CPULOG_WRITE_TIME    true       // write instruction machine time?
-#define CPULOG_WRITE_CSEIP   true       // write instruction address as CS:EIP?
-#define CPULOG_WRITE_HEX     true       // write instruction as hex codes?
-#define CPULOG_WRITE_DISASM  true       // write the disassembled instruction?
-#define CPULOG_WRITE_STATE   true       // write the CPU global state?
-#define CPULOG_WRITE_CORE    true       // write the CPU registers?
-#define CPULOG_DECODE_FLAGS  true       // decode flags register into a string
-#define CPULOG_WRITE_SEGREGS true       // write extended seg regs status? (only if CPULOG_WRITE_CORE is true)
-#define CPULOG_WRITE_PQ      false      // write the prefetch queue?
-#define CPULOG_WRITE_TIMINGS false      // write various timing values?
-#define CPULOG_START_ADDR    0x0        // lower bound, instr. before this address are not logged
-#define CPULOG_END_ADDR      0xFFFFFFFF // upper bound, instr. after this address are not logged
-#define CPULOG_LOG_INTS      true       // log INTs' instructions?
-#define CPULOG_INT21_EXIT_IP -1         // the OS dependent IP of the last instr. of INT 21/4B
-                                        // For PC-DOS 4.01 under ROMSHELL is 0x7782,
-                                        //                 under plain DOS is 0x7852
-                                        // use -1 to disable (logging starts at INT call)
-#define CPULOG_COUNTERS      false      // count every instruction executed
-
 #include "core.h"
 #include "decoder.h"
 #include "state.h"
@@ -63,6 +38,8 @@ struct CPULogEntry
 	CPUCore core;
 	CPUException exc;
 	CPUBus bus;
+	MemoryLogger bus_logger;
+	MemoryLogger mem_logger;
 	Instruction instr;
 	CPUCycles cycles;
 	CPULogIRQ irq;
@@ -70,10 +47,13 @@ struct CPULogEntry
 
 class CPULogger
 {
+public:
+	using CPULog = std::vector<CPULogEntry>;
+
 private:
 	uint m_log_idx = 0;
 	uint m_log_size = 0;
-	CPULogEntry m_log[CPULOG_MAX_SIZE];
+	CPULog m_log;
 	uint32_t m_iret_address = 0;
 	CPULogIRQ m_irq = {0xFF,0};
 	FILE *m_log_file = nullptr;
@@ -86,10 +66,12 @@ private:
 	static const std::string & disasm(CPULogEntry &_log_entry);
 	static void write_counters(const std::string _filename, std::map<int,uint64_t> &_cnt);
 	static int write_segreg(FILE *_dest, const CPUCore &_core, const SegReg &_segreg, const char *_name);
-	static const char* decode_eflags(uint32_t _eflags, bool _32bit);
+public:
+	static const char* decode_eflags(uint32_t _eflags, bool _32bit, uint32_t _mask = 0xFFFFFFFF);
 
 public:
 
+	CPULogger();
 	~CPULogger();
 
 	void add_entry(
@@ -99,6 +81,7 @@ public:
 		const CPUException &_exc,
 		const CPUCore &_core,
 		const CPUBus &_bus,
+		const MemoryLogger &_mem_logger,
 		const CPUCycles &_cycles
 	);
 	void set_prev_i_exc(const CPUException &_exc, uint32_t _cseip);
@@ -110,6 +93,8 @@ public:
 	void reset_global_counters();
 	void reset_file_counters();
 	void dump(const std::string _filename);
+	unsigned get_log_size() const { return m_log_size; }
+	const CPULogEntry & get_log_entry(size_t _idx) const;
 };
 
 #endif

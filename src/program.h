@@ -54,6 +54,7 @@ class Program
 	std::function<void()> m_restore_fn;
 
 	std::unique_ptr<TestFile> m_test_file; // a machine test file to be executed.
+	int m_test_index; // test index to execute
 	std::string m_log_filename;
 	std::string m_cpulog_filename;
 

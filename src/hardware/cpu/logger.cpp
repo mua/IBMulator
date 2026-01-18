@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -22,10 +22,16 @@
 #include "debugger.h"
 #include "hardware/cpu.h"
 #include "filesys.h"
+#include "utils.h"
 #include <cstring>
 
 #define LOG_O32_BIT 30
 #define LOG_A32_BIT 31
+
+CPULogger::CPULogger()
+{
+	m_log.resize(CPULOG_MAX_SIZE);
+}
 
 CPULogger::~CPULogger()
 {
@@ -39,6 +45,7 @@ void CPULogger::add_entry(
 		const CPUException &_exc,
 		const CPUCore &_core,
 		const CPUBus &_bus,
+		const MemoryLogger &_mem_logger,
 		const CPUCycles &_cycles)
 {
 	// don't log outside fixed boundaries
@@ -54,6 +61,8 @@ void CPULogger::add_entry(
 		m_log[m_log_idx].exc = _exc;
 		m_log[m_log_idx].core = _core;
 		m_log[m_log_idx].bus = _bus;
+		m_log[m_log_idx].bus_logger = _bus.logger();
+		m_log[m_log_idx].mem_logger = _mem_logger;
 		m_log[m_log_idx].cycles = _cycles;
 		m_log[m_log_idx].irq = m_irq;
 
@@ -209,38 +218,44 @@ int CPULogger::write_segreg(FILE *_dest, const CPUCore &_core, const SegReg &_se
 	return 0;
 }
 
-const char* CPULogger::decode_eflags(uint32_t _eflags, bool _32bit)
+const char* CPULogger::decode_eflags(uint32_t _eflags, bool _32bit, uint32_t _mask)
 {
+	// the returned string must be copied by the caller.
 	static char buf[14];
-	if(_32bit) {
-		buf[13] = 0;
-	} else {
-		buf[11] = 0;
-	}
+	int buflen = (_32bit) ? 12 : 10;
+	buf[buflen+1] = 0;
 	int bufcnt = 0;
 	static const char * flags_up   = "CPAZSTIDO NRV";
 	static const char * flags_down = "cpazstido nrv";
-	for(int i=0; i<=(_32bit?17:14); i++) {
-		if(i==1 || i==3 || i==5 || i==13 || i==15) {
+	for(int flag = 0; flag <= (_32bit ? 17 : 14); flag++) {
+		if(flag==1 || flag==3 || flag==5 || flag==13 || flag==15) {
 			continue;
 		}
-		assert(bufcnt<13);
-		if(_eflags & (1 << i)) {
-			buf[bufcnt] = flags_up[bufcnt];
+		assert(bufcnt < 13);
+		if(_mask & (1 << flag)) {
+			if(_eflags & (1 << flag)) {
+				buf[buflen-bufcnt] = flags_up[bufcnt];
+			} else {
+				buf[buflen-bufcnt] = flags_down[bufcnt];
+			}
 		} else {
-			buf[bufcnt] = flags_down[bufcnt];
+			buf[buflen-bufcnt] = '-';
 		}
 		bufcnt++;
 	}
-	switch((_eflags & FMASK_IOPL) >> FBITN_IOPL) {
-		case 0:
-			buf[9] = '0'; break;
-		case 1:
-			buf[9] = '1'; break;
-		case 2:
-			buf[9] = '2'; break;
-		case 3:
-			buf[9] = '3'; break;
+	if(_mask & FMASK_IOPL) {
+		switch((_eflags & FMASK_IOPL) >> FBITN_IOPL) {
+			case 0:
+				buf[3] = '0'; break;
+			case 1:
+				buf[3] = '1'; break;
+			case 2:
+				buf[3] = '2'; break;
+			case 3:
+				buf[3] = '3'; break;
+			default:
+				assert(false); break;
+		}
 	}
 	return buf;
 }
@@ -402,6 +417,35 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 		}
 	}
 
+	if(CPULOG_WRITE_BUSACC) {
+		if(fprintf(_dest, "bus=%u[", unsigned(_entry.bus_logger.get_log_size())) < 0) {
+			return -1;
+		}
+		for(size_t i=0; i<_entry.bus_logger.get_log_size(); i++) {
+			auto &memlog = _entry.bus_logger.get_log()[i];
+			constexpr const char *op[] = { "R", "W", "F" };
+			std::string data;
+			switch(memlog.size) {
+				case 1: data = str_format("0x%02X", memlog.data); break;
+				case 2: data = str_format("0x%04X", memlog.data); break;
+				case 4: data = str_format("0x%08X", memlog.data); break;
+				default: break;
+			}
+			if(fprintf(_dest, "(%s,%u,0x%06X,%s)",
+					op[memlog.operation],
+					memlog.size,
+					memlog.phy_addr,
+					data.c_str()
+			) < 0)
+			{
+				return -1;
+			}
+		}
+		if(fprintf(_dest, "] ") < 0) {
+			return -1;
+		}
+	}
+
 	if(CPULOG_WRITE_TIMINGS) {
 		if(fprintf(_dest, "c=%2d(%2d,%2d,%2d,%2d,%2d,%2d)(b=%d,%d,%d),m=%2d ",
 				// cpu
@@ -515,6 +559,17 @@ void CPULogger::dump(const std::string _filename)
 	if(CPULOG_COUNTERS) {
 		write_counters(_filename + ".cnt", m_global_counters);
 	}
+}
+
+const CPULogEntry & CPULogger::get_log_entry(size_t _idx) const
+{
+	if(_idx >= m_log_size) {
+		throw std::exception();
+	}
+	if(m_log_size >= CPULOG_MAX_SIZE) {
+		_idx = (m_log_idx + _idx) % CPULOG_MAX_SIZE;
+	}
+	return m_log[_idx];
 }
 
 static std::vector<std::pair<int,const char*>> oplist = {

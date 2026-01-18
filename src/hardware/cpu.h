@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2023  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -94,6 +94,7 @@ protected:
 	std::string m_log_prg_name;
 	std::regex m_log_prg_regex;
 
+	int m_soft_int_vector; // vector of the last soft interrupt
 	CPUException m_exception; // exception thrown by the last executed instruction
 	CPUCycles m_cycles; // cycles of the last executed instruction
 
@@ -135,6 +136,8 @@ public:
 	void enter_sleep_state(CPUActivityState _state);
 	void exception(CPUException _exc);
 
+	const CPULogger & get_logger() const { return m_logger; }
+	int get_last_soft_int() const { return m_soft_int_vector; }
 	const CPUException & get_last_i_exception() const { return m_exception; }
 	const CPUCycles & get_last_i_cycles() const { return m_cycles; }
 	CPUActivityState get_activity_state() const { return static_cast<CPUActivityState>(m_s.activity_state); }

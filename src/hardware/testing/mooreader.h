@@ -3,6 +3,7 @@
 
     Copyright (c) 2025 Angela McEgo
     Copyright (c) 2025 Daniel Balsom
+    Copyright (c) 2026 Marco Bortolin
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +37,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "utils.h"
 
 #ifdef MOO_USE_ZLIB
 #include <zlib.h>
@@ -227,6 +229,17 @@ public:
     {
         std::vector<uint8_t> bytes;
     };
+    
+    struct EA32Data
+    {
+        uint8_t segreg;
+        uint16_t segsel;
+        uint32_t segbase;
+        uint32_t seglimit;
+        uint32_t offset;
+        uint32_t linaddr;
+        uint32_t phyaddr;
+    };
 
     struct CpuState
     {
@@ -234,6 +247,8 @@ public:
         std::vector<RamEntry> ram;
         QueueData queue;
         bool has_queue{false};
+        EA32Data ea32;
+        bool has_ea32{false};
     };
 
     struct Cycle
@@ -786,13 +801,27 @@ private:
         return queue;
     }
 
+    // Read in a EA32 chunk
+    EA32Data ReadEA32() {
+        EA32Data data;
+        data.segreg = Read<uint8_t>();
+        data.segsel = Read<uint16_t>();
+        data.segbase = Read<uint32_t>();
+        data.seglimit = Read<uint32_t>();
+        data.offset = Read<uint32_t>();
+        data.linaddr = Read<uint32_t>();
+        data.phyaddr = Read<uint32_t>();
+        return data;
+    }
+    
     // Read in the sub-chunks of a state chunk (INIT/FINA)
     CpuState ReadCpuState(const size_t end_offset) {
         CpuState state;
 
+        PDEBUGF(LOG_V3, LOG_PROGRAM, "MOO:     sub-chunks:");
         while (offset_ < end_offset) {
             ChunkHeader chunk = ReadChunkHeader();
-
+            PDEBUGF(LOG_V3, LOG_PROGRAM, " %s", chunk.type.c_str());
             if (chunk.type == "REGS") {
                 state.regs = ReadRegisters16();
             }
@@ -811,9 +840,13 @@ private:
             else if (chunk.type == "QUEU") {
                 state.queue = ReadQueue();
                 state.has_queue = true;
+            } else if (chunk.type == "EA32") {
+                state.ea32 = ReadEA32();
+                state.has_ea32 = true;
             }
             offset_ = chunk.data_end;
         }
+        PDEBUGF(LOG_V3, LOG_PROGRAM, "\n");
         return state;
     }
 
@@ -822,7 +855,8 @@ private:
         const uint32_t count = Read<uint32_t>();
         std::vector<Cycle> cycles;
         cycles.reserve(count);
-
+        static_assert(std::is_trivially_copyable_v<Cycle::BitField0>);
+        size_check<Cycle::BitField0,1>();
         for (uint32_t i = 0; i < count; i++) {
             Cycle cycle;
             cycle.pin_bitfield0 = Read<uint8_t>();
@@ -849,11 +883,12 @@ private:
         test.cpu_type = mooheader_.cpu_type;
         while (offset_ < test_header.data_end) {
             ChunkHeader chunk = ReadChunkHeader();
-
+            PDEBUGF(LOG_V3, LOG_PROGRAM, "MOO:   chunk %s\n", chunk.type.c_str());
             if (chunk.type == "NAME") {
                 const uint32_t name_len = Read<uint32_t>();
                 test.name.resize(name_len);
                 ReadBytes(&test.name[0], name_len);
+                PDEBUGF(LOG_V3, LOG_PROGRAM, "MOO:     NAME: %s\n", test.name.c_str());
             }
             else if (chunk.type == "BYTS") {
                 const uint32_t byte_count = Read<uint32_t>();
@@ -967,6 +1002,7 @@ private:
         uint32_t test_count = 0;
         while(offset_ < data_.size()) {
             chunk_header = ReadChunkHeader();
+            PDEBUGF(LOG_V3, LOG_PROGRAM, "MOO: found chunk %s\n", chunk_header.type.c_str());
             if (chunk_header.type == "TEST") {
                 tests_.push_back(ReadTest(chunk_header));
                 test_map_[tests_.back().hash] = test_count++;

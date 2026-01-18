@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -57,7 +57,8 @@ m_machine(nullptr),
 m_mixer(nullptr),
 m_gui(nullptr),
 m_start_machine(false),
-m_restore_fn(nullptr)
+m_restore_fn(nullptr),
+m_test_index(-1)
 {
 
 }
@@ -729,9 +730,21 @@ void Program::parse_arguments(int argc, char** argv)
 		switch(c) {
 			case 't': {
 				std::string test_file;
-				PINFOF(LOG_V0, LOG_PROGRAM, "Single Step Test file: '%s'\n", optarg);
+				std::string file_path = optarg;
+				std::regex reg("^(.*):([0-9]*)$", std::regex::ECMAScript|std::regex::icase);
+				std::smatch match;
+				if(std::regex_match(file_path, match, reg)) {
+					file_path = match[1];
+					m_test_index = std::stoi(match[2].str());
+				}
+
+				if(m_test_index >= 0) {
+					PINFOF(LOG_V0, LOG_PROGRAM, "Single Step Test, file: '%s', index: %d\n", file_path.c_str(), m_test_index);
+				} else {
+					PINFOF(LOG_V0, LOG_PROGRAM, "Single Step Test file: '%s'\n", file_path.c_str());
+				}
 				try {
-					test_file = FileSys::check_file_presence(optarg, {".moo",".gz"});
+					test_file = FileSys::check_file_presence(file_path.c_str(), {".moo",".gz"});
 				} catch(std::runtime_error &e) {
 					PERRF(LOG_PROGRAM, "File error: %s.\n", e.what());
 					throw;
@@ -746,6 +759,9 @@ void Program::parse_arguments(int argc, char** argv)
 					PERRF(LOG_PROGRAM, "Test file error: %s.\n", e.what());
 					m_test_file.reset(nullptr);
 					throw;
+				}
+				if(m_test_index >=0 && unsigned(m_test_index) >= m_test_file->test_count()) {
+					throw std::runtime_error("test index overflow");
 				}
 				break;
 			}
@@ -920,8 +936,13 @@ int Program::machine_test()
 	std::thread machine(&Machine::start, m_machine);
 
 	int pass_count = 0, fail_count = 0;
+	unsigned start = 0, end = m_test_file->test_count();
+	if(m_test_index >= 0) {
+		start = m_test_index;
+		end = std::min(start+1, end);
+	}
 	try {
-		for(unsigned index = 0; index < m_test_file->test_count(); index++) {
+		for(unsigned index = start; index < end; index++) {
 			auto test = m_test_file->get_test(index);
 			PINFOF(LOG_V0, LOG_PROGRAM, "Running test #%u: ", test.moo.index);
 			std::promise<MachineTestResult> result;
@@ -931,15 +952,21 @@ int Program::machine_test()
 			auto test_result = fut.get();
 			if(test_result.analyze(test)) {
 				PINFOF(LOG_V0, LOG_PROGRAM, "PASS\n");
+				PINFOF(LOG_V3, LOG_PROGRAM, " Test result:\n");
+				for(auto & str : test_result.analysis_log) {
+					PINFOF(LOG_V3, LOG_PROGRAM, "  %s\n", str.c_str());
+				}
+				PINFOF(LOG_V3, LOG_PROGRAM, " Test data:\n");
+				test.print(LOG_V3);
 				pass_count++;
 			} else {
 				PINFOF(LOG_V0, LOG_PROGRAM, "FAIL\n");
-				PINFOF(LOG_V0, LOG_PROGRAM, " Test result errors:\n");
+				PINFOF(LOG_V0, LOG_PROGRAM, " Test result:\n");
 				for(auto & str : test_result.analysis_log) {
 					PINFOF(LOG_V0, LOG_PROGRAM, "  %s\n", str.c_str());
 				}
 				PINFOF(LOG_V0, LOG_PROGRAM, " Test data:\n");
-				test.print();
+				test.print(LOG_V0);
 				fail_count++;
 			}
 		}

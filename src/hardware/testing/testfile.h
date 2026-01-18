@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025  Marco Bortolin
+ * Copyright (C) 2025-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -31,7 +31,8 @@ struct MachineTest
 {
 	Moo::Reader::Test moo;
 
-	void print();
+	void print(unsigned _log_pri);
+	uint32_t get_flags_mask() const;
 };
 
 struct MachineTestResult
@@ -39,7 +40,10 @@ struct MachineTestResult
 	bool is_valid = false;
 	Moo::Reader::CpuState cpu_state;
 	bool has_exception = false;
+	bool has_soft_int = false;
 	Moo::Reader::Exception exception;
+	bool has_cpu_log = false;
+	std::vector<CPULogEntry> cpu_log;
 
 	bool analyze(const MachineTest &_test);
 	std::vector<std::string> analysis_log;
@@ -50,7 +54,7 @@ class TestFile
 protected:
 	std::string m_path;
 	Moo::Reader m_reader;
-	
+
 public:
 	virtual ~TestFile() {}
 
@@ -60,6 +64,11 @@ public:
 	uint8_t cpu_mode();
 	unsigned test_count() { return m_reader.GetHeader().test_count; }
 	MachineTest get_test(size_t _index);
+
+	static constexpr const char * EXC[]{
+		"#DE", "#DB", "NMI", "#BP", "#OF", "#BR", "#UD", "#NM", "#DF", "#MP",
+		"#TS", "#NP", "#SS", "#GP", "#PF", "15", "#MF"
+	};
 };
 
 #endif
