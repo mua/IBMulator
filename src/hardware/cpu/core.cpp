@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -121,11 +121,7 @@ void CPUCore::handle_mode_change()
 		}
 	} else {
 		// CS segment in real mode always allows full access
-		m_segregs[REGI_CS].desc.set_AR(
-			SEG_SEGMENT |
-			SEG_PRESENT |
-			SEG_READWRITE |
-			SEG_ACCESSED);
+		m_segregs[REGI_CS].desc.set_AR(SEG_REAL_MODE);
 		CPL = 0;
 		PDEBUGF(LOG_V2, LOG_CPU, "now in Real mode\n");
 	}
@@ -156,7 +152,7 @@ void CPUCore::load_segment_real(SegReg & _segreg, uint16_t _value)
 	} else {
 		// v8086 mode
 		_segreg.sel.cpl = 3;
-		_segreg.desc.set_AR(SEG_SEGMENT|SEG_PRESENT|SEG_READWRITE|SEG_ACCESSED);
+		_segreg.desc.set_AR(SEG_REAL_MODE);
 		_segreg.desc.dpl = 3;
 		_segreg.desc.limit = 0xFFFF;
 		_segreg.desc.page_granular = false;
@@ -191,12 +187,7 @@ void CPUCore::load_segment_defaults(SegReg & _segreg, uint16_t _value)
 			DESC_TYPE_BUSY_386_TSS
 		);
 	} else {
-		_segreg.desc.set_AR(
-			SEG_SEGMENT |
-			SEG_PRESENT |
-			SEG_ACCESSED |
-			SEG_READWRITE
-		);
+		_segreg.desc.set_AR(SEG_REAL_MODE);
 	}
 }
 

@@ -1087,7 +1087,7 @@ void CPUExecutor::stack_return_to_v86(Selector &cs_selector, uint32_t new_eip, u
 	REG_ESP = new_esp; // full 32 bit are loaded
 
 	for(unsigned sreg = REGI_ES; sreg <= REGI_GS; sreg++) {
-		SEG_REG(sreg).desc.set_AR(SEG_SEGMENT|SEG_PRESENT|SEG_READWRITE|SEG_ACCESSED);
+		SEG_REG(sreg).desc.set_AR(SEG_REAL_MODE);
 		SEG_REG(sreg).desc.dpl = 3;
 		SEG_REG(sreg).desc.base = SEG_REG(sreg).sel.value << 4;
 		SEG_REG(sreg).desc.limit = 0xFFFF;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -24,17 +24,19 @@
 /*
  * Segment descriptor Access Rights masks
  */
-#define SEG_ACCESSED	0x1
-#define SEG_READWRITE	0x2
+#define SEG_ACCESSED    0x1
+#define SEG_READWRITE   0x2
 #define SEG_CONFORMING  0x4
 #define SEG_EXP_DOWN    0x4
 #define SEG_EXECUTABLE  0x8
 #define SEG_CODE        0x8
 #define SEG_SEGMENT     0x10
 #define SEG_PRESENT     0x80
+#define SEG_REAL_MODE   SEG_SEGMENT|SEG_PRESENT|SEG_READWRITE|SEG_ACCESSED
 
 /* Segment descriptor type masks
  */
+#define SEG_TYPE_DATA       0x0
 #define SEG_TYPE_READWRITE  0x1
 #define SEG_TYPE_READABLE   0x1
 #define SEG_TYPE_WRITABLE   0x1

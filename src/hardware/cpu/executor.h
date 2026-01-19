@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -114,8 +114,8 @@ public:
 	void write_eflags(uint32_t _eflags, bool _change_IOPL, bool _change_IF, bool _change_NT, bool _change_VM);
 
 	void seg_check(SegReg & _seg, uint32_t _offset, unsigned _len, bool _write, uint8_t _vector=CPU_INVALID_INT, uint16_t _errcode=0);
-	void seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode);
-	void seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len, uint8_t _vector, uint16_t _errcode);
+	bool seg_check_read(SegReg & _seg, uint32_t _offset, unsigned _len);
+	bool seg_check_write(SegReg & _seg, uint32_t _offset, unsigned _len);
 	void io_check(uint16_t _port, unsigned _len);
 
 	void mmu_lookup(uint32_t _linear, unsigned _len, bool _user, bool _write);
