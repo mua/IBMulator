@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -178,6 +178,8 @@ void CPUExecutor::execute(Instruction * _instr)
 
 		m_reset = false;
 	}
+
+	g_cpubus.prefill_pq();
 
 	(this->*exec_fn)();
 

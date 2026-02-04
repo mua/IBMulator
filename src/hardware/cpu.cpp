@@ -205,7 +205,7 @@ uint CPU::step()
 	CPUState state_log;
 	bool do_log = false;
 
-	g_cpubus.reset_counters();
+	g_cpubus.counters().reset();
 
 	m_soft_int_vector = -1;
 	m_exception = { CPU_INVALID_INT, 0 };
@@ -243,7 +243,7 @@ uint CPU::step()
 				}
 
 				// instruction decoding
-				if(UNLIKELY(!g_cpubus.pq_is_valid())) {
+				if(UNLIKELY(!g_cpubus.is_pq_valid())) {
 					g_cpubus.reset_pq();
 					m_instr = g_cpudecoder.decode();
 					m_cycles.decode = m_instr->size;
@@ -261,7 +261,7 @@ uint CPU::step()
 			// instruction execution
 			g_cpuexecutor.execute(m_instr);
 
-			m_cycles.eu = get_execution_cycles(g_cpubus.memory_accessed());
+			m_cycles.eu = get_execution_cycles(g_cpubus.counters().was_memory_accessed());
 			int io_time = g_devices.get_last_io_time();
 			if(io_time) {
 				m_cycles.io = get_io_cycles(io_time);
@@ -295,7 +295,7 @@ uint CPU::step()
 		m_cycles.eu = m_hlt_state_cycles;
 	}
 
-	if(g_cpubus.pq_is_valid()) {
+	if(g_cpubus.is_pq_valid()) {
 		g_cpubus.update(m_cycles.decode + m_cycles.eu);
 		// other possible strategies:
 		// g_cpubus.update(cycles.eu);
@@ -306,12 +306,12 @@ uint CPU::step()
 	}
 
 	// determine the total amount of cycles spent
-	m_cycles.bu = g_cpubus.pipelined_mem_cycles() + m_instr->cycles.bu;
+	m_cycles.bu = g_cpubus.counters().pmem_cycles + m_instr->cycles.bu;
 	if(m_cycles.bu < 0) {
 		m_cycles.bu = 0;
 	}
-	m_cycles.bu += g_cpubus.pipelined_fetch_cycles();
-	m_cycles.bus = g_cpubus.fetch_cycles() + g_cpubus.mem_r_cycles();
+	m_cycles.bu += g_cpubus.counters().pfetch_cycles;
+	m_cycles.bus = g_cpubus.counters().fetch_cycles + g_cpubus.counters().mem_r_cycles;
 
 	int tot_cycles = m_cycles.sum();
 	if(m_cycles.bus && (g_machine.get_virt_time_ns()%15085)<((tot_cycles*m_cycle_time))) {
@@ -366,7 +366,7 @@ int CPU::get_execution_cycles(bool _memtx)
 	}
 	if(m_instr->cycles.noj>0) {
 		//TODO consider the BOUND case
-		if(g_cpubus.pq_is_valid()) {
+		if(g_cpubus.is_pq_valid()) {
 			//jmp not taken
 			cycles_spent += m_instr->cycles.noj;
 		} else {

@@ -26,7 +26,6 @@
 
 #define CPU_USE_PQ       true
 #define CPU_PQ_MAX_SIZE  16
-#define CPU_BUS_WQ_SIZE  50
 
 class CPUBus;
 extern CPUBus g_cpubus;
@@ -36,12 +35,22 @@ class CPUBus
 {
 private:
 	struct {
-		uint32_t cseip;
+		// anatomy of the PQ:
+		//                 ┌------[len]-----┐
+		// addr: left    cseip             tail
+		//       ╔══╤    ╤══╤══╤══╤══╤══╤══╤══╤    ╤══╗
+		// data: ║  │ .. │  │  │  │  │  │  │  │ .. │  ║
+		//       ╚══╧    ╧══╧══╧══╧══╧══╧══╧══╧    ╧══╝
+		//        ^       ^                         ^
+		// index: 0      pq_idx()                  size-1
+		//
+		// addresses are in linear space
+		uint32_t cseip;   // address of the instruction pointer
 		uint32_t eip;
 		uint8_t  pq[CPU_PQ_MAX_SIZE];
 		bool     pq_valid;
-		uint32_t pq_tail;
-		uint32_t pq_left;
+		uint32_t pq_left; // address of the head (always >= cseip)
+		uint32_t pq_tail; // address of the tail (always >= cseip)
 		int      pq_len;
 	} m_s;
 
@@ -49,24 +58,43 @@ private:
 	int m_pq_size = 0;
 	int m_pq_thres = 0;
 	int m_paddress = 0; // pipelined address
-	int m_fetch_cycles = 0;
-	int m_mem_r_cycles = 0;
-	int m_mem_w_cycles = 0;
-	int m_mem_w_count = 0;
-	int m_pmem_cycles = 0;   // pipelined memory cycles
-	int m_pfetch_cycles = 0; // pipelined fetch cycles
 	int m_cycles_ahead = 0;
 
-	struct wq_data {
-		void (CPUBus::*w_fn)(uint32_t _addr, uint32_t _data, int &_cycles);
-		uint32_t address;
-		uint32_t data;
+	// an array containing the information about the PQ updates happened during prefilling
+	struct PQCycles {
+		uint32_t cycles;
+		uint32_t tail;
 	};
-	wq_data m_write_queue[CPU_BUS_WQ_SIZE];
-	int m_wq_idx = -1;
+	PQCycles m_pq_cycles[CPU_PQ_MAX_SIZE / 2]; // the bus width is at least 16bit
+	int m_pq_cycles_len = 0; // the amount of prefilling fetches
 
 	// many copies of CPUBus can exist in the CPULogger
 	std::shared_ptr<MemoryLogger> m_logger;
+
+public:
+	struct Counters {
+		int fetch_cycles;
+		int pq_avail_cycles;
+		int mem_r_cycles;
+		int mem_w_cycles;
+		int pmem_cycles;   // pipelined memory cycles
+		int pfetch_cycles; // pipelined fetch cycles
+
+		void reset() {
+			fetch_cycles = 0;
+			pq_avail_cycles = 0;
+			mem_r_cycles = 0;
+			mem_w_cycles = 0;
+			pmem_cycles = 0;
+			pfetch_cycles = 0;
+		}
+
+		constexpr bool was_memory_accessed() const { return (mem_r_cycles || mem_w_cycles); }
+		constexpr int  mem_tx_cycles() const { return mem_r_cycles + mem_w_cycles; }
+	};
+
+private:
+	Counters m_counters;
 
 public:
 	CPUBus();
@@ -75,27 +103,13 @@ public:
 	void reset();
 	void config_changed();
 
-	inline void reset_counters() {
-		m_fetch_cycles  = 0;
-		m_mem_r_cycles  = 0;
-		m_mem_w_cycles  = 0;
-		m_pmem_cycles   = 0;
-		m_pfetch_cycles = 0;
-	}
-
-	inline bool memory_accessed() const { return (m_mem_r_cycles || (m_wq_idx>=0)); }
-	inline bool memory_written() const { return (m_wq_idx>=0) || m_mem_w_cycles; }
-	inline int  fetch_cycles() const { return m_fetch_cycles; }
-	inline int  mem_r_cycles() const { return m_mem_r_cycles; }
-	inline int  mem_tx_cycles() const { return m_mem_r_cycles + m_mem_w_cycles; }
-	inline int  pipelined_mem_cycles() const { return m_pmem_cycles; }
-	inline int  pipelined_fetch_cycles() const { return m_pfetch_cycles; }
-	inline int  cycles_ahead() const { return m_cycles_ahead; }
-	inline bool pq_is_valid() const { return m_s.pq_valid; }
-	inline int  width() const { return m_width; }
+	int  cycles_ahead() const { return m_cycles_ahead; }
+	bool is_pq_valid() const { return m_s.pq_valid; }
+	int  width() const { return m_width; }
 
 	void update(int _cycles);
 	void enable_paging(bool _enabled);
+	void prefill_pq();
 
 	//instruction fetching
 	#if CPU_USE_PQ
@@ -114,37 +128,25 @@ public:
 	inline void invalidate_pq() {
 		m_s.pq_valid = false;
 		m_s.pq_len = 0;
-		m_s.pq_left = m_s.cseip;
-		m_s.pq_tail = m_s.pq_left;
+		m_s.pq_left = m_s.pq_tail = m_s.cseip;
 	}
 	void reset_pq();
 
-	template<unsigned S> inline uint32_t mem_read(uint32_t _addr)
+	template<unsigned S> inline uint32_t mem_read(uint32_t _phy)
 	{
 		#if CPULOG
-		uint32_t value = p_mem_read<S>(_addr, m_mem_r_cycles);
-		m_logger->push_back({ MemoryLogger::MEMR, S, _addr, value });
+		uint32_t value = p_mem_read<S>(_phy, m_counters.mem_r_cycles);
+		m_logger->push_back({ MemoryLogger::MEMR, S, _phy, value });
 		return value;
 		#else
-		return p_mem_read<S>(_addr, m_mem_r_cycles);
+		return p_mem_read<S>(_phy, m_counters.mem_r_cycles);
 		#endif
 	}
-	template<unsigned S> inline void mem_write(uint32_t _addr, uint32_t _data)
+	template<unsigned S> inline void mem_write(uint32_t _phy, uint32_t _data)
 	{
-		#if CPU_USE_PQ
-		/* Memory writes need to be executed after a PQ update, because code
-		 * prefetching is done after the instruction execution, in relation to
-		 * the available cpu cycles. The executed instruction could be a mov
-		 * used to modify the code though, and the prefetching would read the
-		 * already modified code in memory.
-		 */
-		assert(m_wq_idx<CPU_BUS_WQ_SIZE-1);
-		m_write_queue[++m_wq_idx] = { &CPUBus::p_mem_write<S>, _addr, _data };
-		#else
-		p_mem_write<S>(_addr, _data, m_mem_w_cycles);
-		#endif
+		p_mem_write<S>(_phy, _data, m_counters.mem_w_cycles);
 		#if CPULOG
-		m_logger->push_back({ MemoryLogger::MEMW, S, _addr, _data });
+		m_logger->push_back({ MemoryLogger::MEMW, S, _phy, _data });
 		#endif
 	}
 
@@ -153,36 +155,35 @@ public:
 
 	int write_pq_to_logfile(FILE *_dest);
 
+	Counters & counters() { return m_counters; }
 	MemoryLogger & logger() const { return *m_logger.get(); }
 
 private:
 	template<unsigned> uint32_t p_mem_read(uint32_t _addr, int &_cycles) { assert(false); return 0; }
 	template<unsigned> void p_mem_write(uint32_t _addr, uint32_t _data, int &_cycles) { assert(false); }
 
-	ALWAYS_INLINE
-	inline int pq_free_space() {
+	constexpr int pq_free_space() const {
 		return m_pq_size - m_s.pq_len;
 	}
-	ALWAYS_INLINE
-	inline int pq_idx() {
+	constexpr int pq_idx() const {
 		return m_s.cseip - m_s.pq_left;
 	}
-	ALWAYS_INLINE
-	inline bool pq_is_empty() {
+	constexpr bool pq_is_empty() const {
 		return m_s.pq_len == 0;
 	}
-	uint8_t *move_pq_data();
-	template<int len> uint32_t mmu_read(uint32_t _linear, int &_cycles);
-	template<int bytes, bool paging> int fill_pq(int _amount, int _cycles, bool _paddress);
-	int (CPUBus::*fill_pq_fn)(int, int, bool) = nullptr;
+	template<int len, bool paging> uint32_t fill_pq_read_mem(uint32_t _linear, int &_cycles);
+	template<int bytes, bool paging> int fill_pq(int _amount, bool _paddress);
+	int (CPUBus::*fill_pq_fn)(int, bool) = nullptr;
 
 	template<class T, int L>
 	T fetch()
 	{
+		// code is always read from the PQ 
 		if(m_s.pq_len < L) {
-			m_fetch_cycles += (this->*fill_pq_fn)(L-m_s.pq_len, 0, m_fetch_cycles>0);
+			// if there's not enough code available then fill the queue first
+			m_counters.fetch_cycles += (this->*fill_pq_fn)(L-m_s.pq_len, m_counters.fetch_cycles>0);
 			if(m_cycles_ahead) {
-				m_pfetch_cycles += m_cycles_ahead;
+				m_counters.pfetch_cycles += m_cycles_ahead;
 				m_cycles_ahead = 0;
 			}
 		}

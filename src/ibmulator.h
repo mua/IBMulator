@@ -131,6 +131,7 @@
                                         //                 under plain DOS is 0x7852
                                         // use -1 to disable (logging starts at INT call)
 #define CPULOG_COUNTERS      false      // count every instruction executed
+#define CPULOG_LOG_DMA       false      // log DMA data transfers?
 
 
 #include "syslog.h"

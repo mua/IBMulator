@@ -423,6 +423,9 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 		}
 		for(size_t i=0; i<_entry.bus_logger.get_log_size(); i++) {
 			auto &memlog = _entry.bus_logger.get_log()[i];
+			if(memlog.size == 0) {
+				continue;
+			}
 			constexpr const char *op[] = { "R", "W", "F" };
 			std::string data;
 			switch(memlog.size) {
@@ -447,7 +450,7 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 	}
 
 	if(CPULOG_WRITE_TIMINGS) {
-		if(fprintf(_dest, "c=%2d(%2d,%2d,%2d,%2d,%2d,%2d)(b=%d,%d,%d),m=%2d ",
+		if(fprintf(_dest, "c=%3d(%3d,%3d,%3d,%3d,%3d,%3d)(b=%3d,%3d,%3d,%3d,%3d),m=%3d ",
 				// cpu
 				_entry.cycles.sum(),
 				_entry.cycles.eu,
@@ -457,11 +460,13 @@ int CPULogger::write_entry(FILE *_dest, CPULogEntry &_entry)
 				_entry.cycles.bus,
 				_entry.cycles.refresh,
 				// bus
-				_entry.bus.pipelined_mem_cycles(),
-				_entry.bus.pipelined_fetch_cycles(),
+				_entry.bus.counters().pmem_cycles,
+				_entry.bus.counters().pfetch_cycles,
+				_entry.bus.counters().fetch_cycles,
+				_entry.bus.counters().pq_avail_cycles,
 				_entry.bus.cycles_ahead(),
 				// mem transfers
-				_entry.bus.mem_tx_cycles()) < 0)
+				_entry.bus.counters().mem_tx_cycles()) < 0)
 			return -1;
 	}
 

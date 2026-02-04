@@ -312,7 +312,7 @@ void Memory::set_A20_line(bool _enabled)
 }
 
 template<>
-uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles, bool _code) const noexcept
+uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles, MemoryLogger::Operation _op) const noexcept
 {
 	_addr &= m_s.mask;
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].read;
@@ -322,13 +322,15 @@ uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles, bool _code) const 
 		value = map->read.byte(_addr, map->read.priv);
 	}
 	#if CPULOG
-	m_logger->push_back({_code ? MemoryLogger::CODE : MemoryLogger::MEMR, 1, _addr, value});
+	m_logger->push_back({_op, 1, _addr, value});
+	#else
+	UNUSED(_op);
 	#endif
 	return value;
 }
 
 template<>
-uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles, bool _code) const noexcept
+uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles, MemoryLogger::Operation _op) const noexcept
 {
 	_addr &= m_s.mask;
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].read;
@@ -340,28 +342,30 @@ uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles, bool _code) const 
 			 * dword boundaries
 			 */
 			value = (
-				read_mapped<1>(_addr,   _cycles) |
-				read_mapped<1>(_addr+1, _cycles) << 8
+				read_mapped<1>(_addr,   _cycles, _op) |
+				read_mapped<1>(_addr+1, _cycles, _op) << 8
 			);
 		} else {
 			// if odd address then it must be 32-bit internal bus
 			_cycles += map->cycles.word;
 			value = map->read.word(_addr, map->read.priv);
+			#if CPULOG
+			m_logger->push_back({_op, 2, _addr, value});
+			#else
+			UNUSED(_op);
+			#endif
 		}
 	} else {
 		value = (
-			read_mapped<1>(_addr,   _cycles) |
-			read_mapped<1>(_addr+1, _cycles) << 8
+			read_mapped<1>(_addr,   _cycles, _op) |
+			read_mapped<1>(_addr+1, _cycles, _op) << 8
 		);
 	}
-	#if CPULOG
-	m_logger->push_back({_code ? MemoryLogger::CODE : MemoryLogger::MEMR, 2, _addr, value});
-	#endif
 	return value;
 }
 
 template<>
-uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles, bool _code) const noexcept
+uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles, MemoryLogger::Operation _op) const noexcept
 {
 	_addr &= m_s.mask;
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].read;
@@ -369,24 +373,28 @@ uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles, bool _code) const 
 	if(map->read.dword) {
 		_cycles += map->cycles.dword;
 		value = map->read.dword(_addr, map->read.priv);
+		#if CPULOG
+		m_logger->push_back({_op, 4, _addr, value});
+		#else
+		UNUSED(_op);
+		#endif
 	} else {
 		value = (
-			read_mapped<2>(_addr,   _cycles) |
-			read_mapped<2>(_addr+2, _cycles) << 16
+			read_mapped<2>(_addr,   _cycles, _op) |
+			read_mapped<2>(_addr+2, _cycles, _op) << 16
 		);
 	}
-	#if CPULOG
-	m_logger->push_back({_code ? MemoryLogger::CODE : MemoryLogger::MEMR, 4, _addr, value});
-	#endif
 	return value;
 }
 
 template<>
-void Memory::write_mapped<1>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
+void Memory::write_mapped<1>(uint32_t _addr, uint32_t _data, int &_cycles, MemoryLogger::Operation _op) noexcept
 {
 	_addr &= m_s.mask;
 	#if CPULOG
-	m_logger->push_back({MemoryLogger::MEMW, 1, _addr, _data});
+	m_logger->push_back({_op, 1, _addr, _data});
+	#else
+	UNUSED(_op);
 	#endif
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].write;
 	if(map->write.byte) {
@@ -396,12 +404,9 @@ void Memory::write_mapped<1>(uint32_t _addr, uint32_t _data, int &_cycles) noexc
 }
 
 template<>
-void Memory::write_mapped<2>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
+void Memory::write_mapped<2>(uint32_t _addr, uint32_t _data, int &_cycles, MemoryLogger::Operation _op) noexcept
 {
 	_addr &= m_s.mask;
-	#if CPULOG
-	m_logger->push_back({MemoryLogger::MEMW, 2, _addr, _data});
-	#endif
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].write;
 	if(map->write.word) {
 		if((_addr&0x1) && (map->flags&MEM_MAPPING_EXTERNAL)) {
@@ -409,34 +414,41 @@ void Memory::write_mapped<2>(uint32_t _addr, uint32_t _data, int &_cycles) noexc
 			 * this is the case for 32-bit bus CPU for odd aligned words inside
 			 * dword boundaries
 			 */
-			write_mapped<1>(_addr,   _data,    _cycles);
-			write_mapped<1>(_addr+1, _data>>8, _cycles);
+			write_mapped<1>(_addr,   _data,    _cycles, _op);
+			write_mapped<1>(_addr+1, _data>>8, _cycles, _op);
 			return;
 		}
 		// if odd address then it must be 32-bit internal bus
 		_cycles += map->cycles.word;
 		map->write.word(_addr, _data, map->write.priv);
+		#if CPULOG
+		m_logger->push_back({_op, 2, _addr, _data});
+		#else
+		UNUSED(_op);
+		#endif
 		return;
 	}
-	write_mapped<1>(_addr,   _data,    _cycles);
-	write_mapped<1>(_addr+1, _data>>8, _cycles);
+	write_mapped<1>(_addr,   _data,    _cycles, _op);
+	write_mapped<1>(_addr+1, _data>>8, _cycles, _op);
 }
 
 template<>
-void Memory::write_mapped<4>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
+void Memory::write_mapped<4>(uint32_t _addr, uint32_t _data, int &_cycles, MemoryLogger::Operation _op) noexcept
 {
 	_addr &= m_s.mask;
-	#if CPULOG
-	m_logger->push_back({MemoryLogger::MEMW, 4, _addr, _data});
-	#endif
 	MemMapping *map = m_map[_addr / MEM_MAP_GRANULARITY].write;
 	if(map->write.dword) {
 		_cycles += map->cycles.dword;
 		map->write.dword(_addr, _data, map->write.priv);
+		#if CPULOG
+		m_logger->push_back({_op, 4, _addr, _data});
+		#else
+		UNUSED(_op);
+		#endif
 		return;
 	}
-	write_mapped<2>(_addr,    _data,      _cycles);
-	write_mapped<2>(_addr+2, (_data>>16), _cycles);
+	write_mapped<2>(_addr,    _data,      _cycles, _op);
+	write_mapped<2>(_addr+2, (_data>>16), _cycles, _op);
 }
 
 uint8_t * Memory::get_buffer_ptr(uint32_t _addr)
@@ -452,7 +464,7 @@ void Memory::DMA_read(uint32_t _addr, uint16_t _len, uint8_t *_buf)
 {
 	int c = 0;
 	for(uint16_t i=0; i<_len; i++) {
-		_buf[i] = read<1>(_addr+i, c);
+		_buf[i] = read<1>(_addr+i, c, MemoryLogger::DMAR);
 	}
 }
 
@@ -460,7 +472,7 @@ void Memory::DMA_write(uint32_t _addr, uint16_t _len, uint8_t *_buf)
 {
 	int c = 0;
 	for(uint16_t i=0; i<_len; i++) {
-		write<1>(_addr+i, _buf[i], c);
+		write<1>(_addr+i, _buf[i], c, MemoryLogger::DMAW);
 	}
 }
 

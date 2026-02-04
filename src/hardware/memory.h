@@ -69,30 +69,49 @@ class MemoryLogger
 public:
 	struct LogData {
 		uint32_t operation;
-		uint32_t size;
+		uint32_t size;      // if 0 then the entry is invalid
 		uint32_t phy_addr;
 		uint32_t data;
 	};
 	enum Operation {
-		MEMR, // read data
-		MEMW, // write data
-		CODE  // code fetch
+		MEMR, // CPU read data
+		MEMW, // CPU write data
+		CODE, // CPU code fetch
+		DMAR, // DMA read data
+		DMAW, // DMA write data
 	};
 	using MemLog = std::array<LogData,MEM_LOG_SIZE>;
 
 protected:
 	MemLog m_log;
 	size_t m_log_size = 0;
+	size_t m_log_entries = 0;
 
 public:
 	void push_back(const LogData &_data) {
+		if(!CPULOG_LOG_DMA && (_data.operation == DMAR || _data.operation == DMAW)) {
+			return;
+		}
 		if(m_log_size < MEM_LOG_SIZE) {
 			m_log[m_log_size++] = _data;
+			m_log_entries++;
 		}
 	}
 	const MemLog & get_log() const { return m_log; }
 	size_t get_log_size() const { return m_log_size; }
-	void clear_log() { m_log_size = 0; }
+	size_t get_log_entries() const { return m_log_entries; }
+	void clear_log() { m_log_size = 0; m_log_entries = 0; }
+	void rollback(Operation _op, int _count) {
+		int i = int(m_log_size) - 1;
+		while(i >= 0 && _count && m_log_entries) {
+			if(m_log[i].operation == _op) {
+				m_log[i].size = 0;
+				_count--;
+				m_log_entries--;
+			}
+			i--;
+		}
+	}
 };
 
 
@@ -250,15 +269,15 @@ private:
 
 	// read functions for CPUBus
 	template<unsigned LEN> inline
-	uint32_t read(uint32_t _address, int &_cycles, bool _code=false) const noexcept
+	uint32_t read(uint32_t _address, int &_cycles, MemoryLogger::Operation _op = MemoryLogger::MEMR) const noexcept
 	{
-		return read_mapped<LEN>(_address, _cycles, _code);
+		return read_mapped<LEN>(_address, _cycles, _op);
 	}
 	template<unsigned LEN> inline
-	uint32_t read_t(uint32_t _address, unsigned _trap_len, int &_cycles) const noexcept
+	uint32_t read_t(uint32_t _address, unsigned _trap_len, int &_cycles, MemoryLogger::Operation _op = MemoryLogger::MEMR) const noexcept
 	{
 		#if MEMORY_TRAPS
-		uint32_t value = read_mapped<LEN>(_address, _cycles);
+		uint32_t value = read_mapped<LEN>(_address, _cycles, _op);
 		check_trap(_address, MEM_TRAP_READ, value, _trap_len);
 		return value;
 		#else
@@ -267,19 +286,21 @@ private:
 		#endif
 	}
 	template<unsigned LEN>
-	uint32_t read_mapped(uint32_t _address, int &_cycles, bool _code=false) const noexcept { assert(false); return ~0; }
-
+	uint32_t read_mapped(uint32_t _address, int &_cycles, MemoryLogger::Operation _op = MemoryLogger::MEMR) const noexcept {
+		assert(false);
+		return ~0;
+	}
 
 	// write functions for CPUBus
 	template<unsigned LEN>
-	void write(uint32_t _addr, uint32_t _data, int &_cycles) noexcept
+	void write(uint32_t _addr, uint32_t _data, int &_cycles, MemoryLogger::Operation _op = MemoryLogger::MEMW) noexcept
 	{
-		write_mapped<LEN>(_addr, _data, _cycles);
+		write_mapped<LEN>(_addr, _data, _cycles, _op);
 	}
 	template<unsigned LEN> inline
-	void write_t(uint32_t _addr, uint32_t _data, unsigned _trap_len, int &_cycles) noexcept
+	void write_t(uint32_t _addr, uint32_t _data, unsigned _trap_len, int &_cycles, MemoryLogger::Operation _op = MemoryLogger::MEMW) noexcept
 	{
-		write_mapped<LEN>(_addr, _data, _cycles);
+		write_mapped<LEN>(_addr, _data, _cycles, _op);
 		#if MEMORY_TRAPS
 		check_trap(_addr, MEM_TRAP_WRITE, _data, _trap_len);
 		#else
@@ -287,7 +308,9 @@ private:
 		#endif
 	}
 	template<unsigned LEN>
-	void write_mapped(uint32_t _addr, uint32_t _data, int &_cycles) noexcept { assert(false); }
+	void write_mapped(uint32_t _addr, uint32_t _data, int &_cycles, MemoryLogger::Operation _op = MemoryLogger::MEMW) noexcept {
+		assert(false);
+	}
 
 
 	// static RAM buffer read/write for mem mapping
@@ -335,12 +358,12 @@ template<> inline void Memory::s_write<uint32_t>(uint32_t _addr, uint32_t _value
 	((Memory*)_priv)->m_ram.buffer[_addr + 3] = _value >> 24;
 }
 
-template<> uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles, bool _code) const noexcept;
-template<> uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles, bool _code) const noexcept;
-template<> uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles, bool _code) const noexcept;
+template<> uint32_t Memory::read_mapped<1>(uint32_t _addr, int &_cycles, MemoryLogger::Operation _op) const noexcept;
+template<> uint32_t Memory::read_mapped<2>(uint32_t _addr, int &_cycles, MemoryLogger::Operation _op) const noexcept;
+template<> uint32_t Memory::read_mapped<4>(uint32_t _addr, int &_cycles, MemoryLogger::Operation _op) const noexcept;
 
-template<> void Memory::write_mapped<1>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept;
-template<> void Memory::write_mapped<2>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept;
-template<> void Memory::write_mapped<4>(uint32_t _addr, uint32_t _data, int &_cycles) noexcept;
+template<> void Memory::write_mapped<1>(uint32_t _addr, uint32_t _data, int &_cycles, MemoryLogger::Operation _op) noexcept;
+template<> void Memory::write_mapped<2>(uint32_t _addr, uint32_t _data, int &_cycles, MemoryLogger::Operation _op) noexcept;
+template<> void Memory::write_mapped<4>(uint32_t _addr, uint32_t _data, int &_cycles, MemoryLogger::Operation _op) noexcept;
 
 #endif

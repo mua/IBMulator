@@ -166,19 +166,21 @@ bool MachineTestResult::analyze(const MachineTest &_test)
 				bytes += str_format("%02X ", instr.bytes[b]);
 			}
 			analysis_log.push_back(str_format(" [%u] instruction bytes (%u): %s", i, instr.size, bytes.c_str()));
-			analysis_log.push_back(str_format("  bus requests: %u", cpu_log[i].bus_logger.get_log_size()));
+			analysis_log.push_back(str_format("  bus requests: %u", cpu_log[i].bus_logger.get_log_entries()));
+			size_t entry_n = 0;
 			for(size_t j=0; j<cpu_log[i].bus_logger.get_log_size(); j++) {
 				auto & memlog = cpu_log[i].bus_logger.get_log()[j];
+				entry_n += memlog.size == 0 ? 0 : 1;
 				constexpr const char *op[] = { "MEMR", "MEMW", "CODE" };
-				std::string data;
+				std::string data = "0x0000";
 				switch(memlog.size) {
 					case 1: data = str_format("0x%02X", memlog.data); break;
 					case 2: data = str_format("0x%04X", memlog.data); break;
 					case 4: data = str_format("0x%08X", memlog.data); break;
 					default: break;
 				}
-				analysis_log.push_back(str_format("   [%*u] Addr=0x%06X Data=%s Bus=%s Size=%u", 3,
-						j,
+				analysis_log.push_back(str_format("   [%s] Addr=0x%06X Data=%s Bus=%s Size=%u",
+						memlog.size == 0 ? "  *" : str_format("%*u", 3, entry_n).c_str(),
 						memlog.phy_addr,
 						data.c_str(),
 						op[memlog.operation],
@@ -196,14 +198,16 @@ bool MachineTestResult::analyze(const MachineTest &_test)
 				}
 			}
 			if(cpu_log[i].mem_logger.get_log_size()) {
-				analysis_log.push_back(str_format("  data transfers: %u", cpu_log[i].mem_logger.get_log_size()));
+				analysis_log.push_back(str_format("  data transfers: %u", cpu_log[i].mem_logger.get_log_entries()));
 				unsigned rcount = 0, wcount = 0, ccount = 0;
 				unsigned rsize = 0, wsize = 0, csize = 0;
+				entry_n = 0;
 				for(size_t j=0; j<cpu_log[i].mem_logger.get_log_size(); j++) {
 					auto & memlog = cpu_log[i].mem_logger.get_log()[j];
+					entry_n += memlog.size == 0 ? 0 : 1;
 					constexpr const char *op[] = { "MEMR", "MEMW", "CODE" };
-					analysis_log.push_back(str_format("   [%*u] Addr=0x%06X Data=0x%04X Bus=%s Size=%u", 3,
-							j,
+					analysis_log.push_back(str_format("   [%s] Addr=0x%06X Data=0x%04X Bus=%s Size=%u",
+							memlog.size == 0 ? "  *" : str_format("%*u", 3, entry_n).c_str(),
 							memlog.phy_addr,
 							memlog.data,
 							op[memlog.operation],
@@ -357,11 +361,11 @@ void MachineTest::print(unsigned _log_pri)
 		std::string busstatus = Moo::Reader::GetBusStatusName(cycle.bus_status, moo.cpu_type);
 		if(cycle.t_state == 0) {
 			PINFOF(_log_pri, LOG_PROGRAM, "   [%*u] Bus=%s T=%s\n", 3,
-				i, busstatus.c_str(), Moo::Reader::GetTStateName(cycle.t_state, moo.cpu_type)
+				i+1, busstatus.c_str(), Moo::Reader::GetTStateName(cycle.t_state, moo.cpu_type)
 			);
 		} else {
 			PINFOF(_log_pri, LOG_PROGRAM, "   [%*u] Addr=0x%06X Data=0x%04X Bus=%s T=%s ALE=%d BHE=%d\n", 3,
-				i, cycle.address_latch, cycle.data_bus,
+				i+1, cycle.address_latch, cycle.data_bus,
 				busstatus.c_str(),
 				Moo::Reader::GetTStateName(cycle.t_state, moo.cpu_type),
 				cycle.pin_bitfield0.ale,
@@ -397,7 +401,7 @@ void MachineTest::print(unsigned _log_pri)
 	for(size_t i = 0; i < tx.size(); i++) {
 		constexpr const char *op[] = { "MEMR", "MEMW", "CODE" };
 		PINFOF(_log_pri, LOG_PROGRAM, "   [%*u] Addr=0x%06X Data=0x%04X Bus=%s Size=%u\n", 3,
-			i, tx[i].phy_addr, tx[i].data, op[tx[i].operation], tx[i].size
+			i+1, tx[i].phy_addr, tx[i].data, op[tx[i].operation], tx[i].size
 		);
 		if(tx[i].operation == MemoryLogger::MEMR) {
 			rcount++;
@@ -461,7 +465,7 @@ uint32_t MachineTest::get_flags_mask() const
 				case 0xB3: // BTR
 				case 0xBA: // BT/BTS/BTR/BTC
 				case 0xBB: // BTC
-					// we want to test all the flags because we implement UB
+					mask = FMASK_CF | FMASK_ZF;
 					break;
 				case 0xBC: // BSF
 				case 0xBD: // BSR

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Marco Bortolin
+ * Copyright (C) 2016-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -51,13 +51,15 @@ void CPUExecutor::interrupt(uint8_t _vector)
 		PERRF(LOG_CPU, "real mode interrupt vector > IDT limit\n");
 		throw CPUException(CPU_IDT_LIMIT_EXC, 0);
 	}
-	stack_push_word(GET_FLAGS());
-	stack_push_word(REG_CS.sel.value);
-	stack_push_word(REG_IP);
 
+	// memory reads must be done before the writes
 	uint32_t addr = GET_BASE(IDTR) + _vector * 4;
 	uint16_t new_ip = read_word(addr);
 	uint16_t cs_selector = read_word(addr+2);
+
+	stack_push_word(GET_FLAGS());
+	stack_push_word(REG_CS.sel.value);
+	stack_push_word(REG_IP);
 
 	SET_CS(cs_selector);
 	SET_IP(new_ip);
