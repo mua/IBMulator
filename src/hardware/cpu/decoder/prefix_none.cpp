@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -2169,13 +2169,17 @@ case 0xFF:
 			m_instr.fn = CPUExecutorFn::CALL_ew;
 			break;
 		case 3:
+			if(m_instr.modrm.mod_is_reg()) {
+				illegal_opcode();
+				break;
+			}
 			m_instr.fn = CPUExecutorFn::CALL_m1616;
 			break;
 		case 4:
 			m_instr.fn = CPUExecutorFn::JMP_ew;
 			break;
 		case 5:
-			if(m_instr.modrm.mod == 3) {
+			if(m_instr.modrm.mod_is_reg()) {
 				illegal_opcode();
 				break;
 			}
