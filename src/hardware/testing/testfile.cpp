@@ -174,8 +174,8 @@ bool MachineTestResult::analyze(const MachineTest &_test)
 				constexpr const char *op[] = { "MEMR", "MEMW", "CODE" };
 				std::string data = "0x0000";
 				switch(memlog.size) {
-					case 1: data = str_format("0x%02X", memlog.data); break;
-					case 2: data = str_format("0x%04X", memlog.data); break;
+					case 1: data = str_format("0x%02X", memlog.data & 0xFF); break;
+					case 2: data = str_format("0x%04X", memlog.data & 0xFFFF); break;
 					case 4: data = str_format("0x%08X", memlog.data); break;
 					default: break;
 				}
@@ -206,10 +206,17 @@ bool MachineTestResult::analyze(const MachineTest &_test)
 					auto & memlog = cpu_log[i].mem_logger.get_log()[j];
 					entry_n += memlog.size == 0 ? 0 : 1;
 					constexpr const char *op[] = { "MEMR", "MEMW", "CODE" };
-					analysis_log.push_back(str_format("   [%s] Addr=0x%06X Data=0x%04X Bus=%s Size=%u",
+					std::string data = "0x0000";
+					switch(memlog.size) {
+						case 1: data = str_format("0x%02X", memlog.data & 0xFF); break;
+						case 2: data = str_format("0x%04X", memlog.data & 0xFFFF); break;
+						case 4: data = str_format("0x%08X", memlog.data); break;
+						default: break;
+					}
+					analysis_log.push_back(str_format("   [%s] Addr=0x%06X Data=%s Bus=%s Size=%u",
 							memlog.size == 0 ? "  *" : str_format("%*u", 3, entry_n).c_str(),
 							memlog.phy_addr,
-							memlog.data,
+							data.c_str(),
 							op[memlog.operation],
 							memlog.size
 					));

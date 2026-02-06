@@ -3781,25 +3781,25 @@ void CPUExecutor::PUSH_id()    { stack_push_dword(m_instr->id1); }
 
 void CPUExecutor::PUSHA()
 {
-	uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
+	uint32_t esp = (REG_SS.desc.big) ? REG_ESP : REG_SP;
 
 	if(!IS_PMODE()) {
-		if(sp == 7 || sp == 9 || sp == 11 || sp == 13 || sp == 15) {
+		if(esp == 7 || esp == 9 || esp == 11 || esp == 13 || esp == 15) {
 			throw CPUException(CPU_SEG_OVR_EXC,0);
 		}
-		if(sp == 1 || sp == 3 || sp == 5) {
-			throw CPUShutdown("SP=1,3,5 on stack push (PUSHA)");
+		if(esp == 1 || esp == 3 || esp == 5) {
+			throw CPUShutdown("eSP=1,3,5 on stack push (PUSHA)");
 		}
 	}
 
-	stack_write_word(REG_AX, sp-2);
-	stack_write_word(REG_CX, sp-4);
-	stack_write_word(REG_DX, sp-6);
-	stack_write_word(REG_BX, sp-8);
-	stack_write_word(REG_SP, sp-10);
-	stack_write_word(REG_BP, sp-12);
-	stack_write_word(REG_SI, sp-14);
-	stack_write_word(REG_DI, sp-16);
+	stack_write_word(REG_DI, esp-16);
+	stack_write_word(REG_SI, esp-14);
+	stack_write_word(REG_BP, esp-12);
+	stack_write_word(REG_SP, esp-10);
+	stack_write_word(REG_BX, esp-8);
+	stack_write_word(REG_DX, esp-6);
+	stack_write_word(REG_CX, esp-4);
+	stack_write_word(REG_AX, esp-2);
 
 	if(REG_SS.desc.big) {
 		REG_ESP -= 16;
@@ -3810,25 +3810,25 @@ void CPUExecutor::PUSHA()
 
 void CPUExecutor::PUSHAD()
 {
-	uint32_t sp = (REG_SS.desc.big)?REG_ESP:REG_SP;
+	uint32_t esp = (REG_SS.desc.big) ? REG_ESP : REG_SP;
 
 	if(!IS_PMODE()) {
-		if(sp == 7 || sp == 9 || sp == 11 || sp == 13 || sp == 15) {
+		if(esp == 7 || esp == 9 || esp == 11 || esp == 13 || esp == 15) {
 			throw CPUException(CPU_SEG_OVR_EXC,0);
 		}
-		if(sp == 1 || sp == 3 || sp == 5) {
-			throw CPUShutdown("SP=1,3,5 on stack push (PUSHAD)");
+		if(esp == 1 || esp == 3 || esp == 5) {
+			throw CPUShutdown("eSP=1,3,5 on stack push (PUSHAD)");
 		}
 	}
 
-	stack_write_dword(REG_EAX, sp-4);
-	stack_write_dword(REG_ECX, sp-8);
-	stack_write_dword(REG_EDX, sp-12);
-	stack_write_dword(REG_EBX, sp-16);
-	stack_write_dword(REG_ESP, sp-20);
-	stack_write_dword(REG_EBP, sp-24);
-	stack_write_dword(REG_ESI, sp-28);
-	stack_write_dword(REG_EDI, sp-32);
+	stack_write_dword(REG_EDI, esp-32);
+	stack_write_dword(REG_ESI, esp-28);
+	stack_write_dword(REG_EBP, esp-24);
+	stack_write_dword(REG_ESP, esp-20);
+	stack_write_dword(REG_EBX, esp-16);
+	stack_write_dword(REG_EDX, esp-12);
+	stack_write_dword(REG_ECX, esp-8);
+	stack_write_dword(REG_EAX, esp-4);
 
 	if(REG_SS.desc.big) {
 		REG_ESP -= 32;
