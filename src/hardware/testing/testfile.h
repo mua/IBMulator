@@ -59,11 +59,12 @@ public:
 	virtual ~TestFile() {}
 
 	const char *path() { return m_path.c_str(); }
-	void load(std::string _path);
+	void load(std::string _test_path, std::string _revocation_list_path);
 	CPUFamily cpu_family();
 	uint8_t cpu_mode();
 	unsigned test_count() { return m_reader.GetHeader().test_count; }
 	MachineTest get_test(size_t _index);
+	bool is_revoked(const MachineTest &_test);
 
 	static constexpr const char * EXC[]{
 		"#DE", "#DB", "NMI", "#BP", "#OF", "#BR", "#UD", "#NM", "#DF", "#MP",

@@ -730,6 +730,7 @@ void Program::parse_arguments(int argc, char** argv)
 		switch(c) {
 			case 't': {
 				std::string test_file;
+				std::string revocation_file;
 				std::string file_path = optarg;
 				std::regex reg("^(.*):([0-9]*)$", std::regex::ECMAScript|std::regex::icase);
 				std::smatch match;
@@ -749,9 +750,20 @@ void Program::parse_arguments(int argc, char** argv)
 					PERRF(LOG_PROGRAM, "File error: %s.\n", e.what());
 					throw;
 				}
+
+				file_path = optarg;
+				std::regex rev("^(.*MOO).*$", std::regex::ECMAScript|std::regex::icase);
+				if(std::regex_match(file_path, match, rev)) {
+					file_path = match[1];
+					file_path += ".revocation.list";
+					try {
+						revocation_file = FileSys::check_file_presence(file_path.c_str(), {});
+					} catch(std::runtime_error &) {	}
+				}
+
 				m_test_file = std::make_unique<TestFile>();
 				try {
-					m_test_file->load(test_file);
+					m_test_file->load(test_file, revocation_file);
 					if(m_test_file->cpu_mode() != 0) {
 						throw std::runtime_error("tests not in real mode");
 					}
@@ -945,6 +957,10 @@ int Program::machine_test()
 		for(unsigned index = start; index < end; index++) {
 			auto test = m_test_file->get_test(index);
 			PINFOF(LOG_V0, LOG_PROGRAM, "Running test #%u: ", test.moo.index);
+			if(m_test_file->is_revoked(test)) {
+				PINFOF(LOG_V0, LOG_PROGRAM, "REVOKED\n");
+				continue;
+			}
 			std::promise<MachineTestResult> result;
 			std::future<MachineTestResult> fut = result.get_future();
 			m_machine->cmd_run_test(test, result);

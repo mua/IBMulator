@@ -571,11 +571,14 @@ MachineTest TestFile::get_test(size_t _index)
 	return { m_reader[_index] };
 }
 
-void TestFile::load(std::string _path)
+void TestFile::load(std::string _path, std::string _revocation_list_path)
 {
 	m_path = _path;
 
 	m_reader.AddFromFile(_path);
+	if(!_revocation_list_path.empty()) {
+		m_reader.AddRevocationList(_revocation_list_path);
+	}
 
 	const auto header = m_reader.GetHeader();
 	const auto meta = m_reader.GetMeta();
@@ -584,7 +587,11 @@ void TestFile::load(std::string _path)
 	PINFOF(LOG_V0, LOG_PROGRAM, " CPU: %s\n", header.cpu_name.c_str());
 	PINFOF(LOG_V0, LOG_PROGRAM, " opcode: 0x%08X\n", meta.opcode);
 	PINFOF(LOG_V0, LOG_PROGRAM, " mnemonic: %s\n", meta.mnemonic.c_str());
-	PINFOF(LOG_V0, LOG_PROGRAM, " test count: %u\n", header.test_count);
+	PINFOF(LOG_V0, LOG_PROGRAM, " test count: %u", header.test_count);
+	if(!_revocation_list_path.empty()) {
+		PINFOF(LOG_V0, LOG_PROGRAM, " (%u revoked)", m_reader.GetRevokedCount());
+	}
+	PINFOF(LOG_V0, LOG_PROGRAM, "\n");
 }
 
 CPUFamily TestFile::cpu_family()
@@ -602,4 +609,9 @@ CPUFamily TestFile::cpu_family()
 uint8_t TestFile::cpu_mode()
 {
 	return m_reader.GetMeta().cpu_mode;
+}
+
+bool TestFile::is_revoked(const MachineTest &_test)
+{
+	return m_reader.IsRevoked(_test.moo);
 }

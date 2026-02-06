@@ -436,8 +436,8 @@ public:
         return revocation_list_.find(test.hash) != revocation_list_.end();
     }
 
-    bool GetRevokedCount() const {
-        return static_cast<bool>(revocation_list_.size());
+    size_t GetRevokedCount() const {
+        return revocation_list_.size();
     }
 
     bool HasTest(const std::array<uint8_t, 20>& hash) {
