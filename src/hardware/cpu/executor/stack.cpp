@@ -68,18 +68,18 @@ void CPUExecutor::stack_push_sr_dword(uint16_t _value)
 	}
 }
 
-uint16_t CPUExecutor::stack_pop_word()
+uint16_t CPUExecutor::stack_pop_word(uint32_t _esp_inc)
 {
 	uint16_t value;
 
 	if(REG_SS.desc.big) {
 		// StackAddrSize = 32
 		value = read_word(REG_SS, REG_ESP);
-		REG_ESP += 2;
+		REG_ESP += _esp_inc;
 	} else {
 		// StackAddrSize = 16
 		value = read_word(REG_SS, REG_SP);
-		REG_SP += 2;
+		REG_SP += _esp_inc;
 	}
 
 	return value;

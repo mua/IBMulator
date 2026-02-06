@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2025  Marco Bortolin
+ * Copyright (C) 2016-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -3616,7 +3616,7 @@ void CPUExecutor::POP_SR_dw()
 {
 	SAVE_ESP();
 
-	uint32_t sel = stack_pop_dword();
+	uint16_t sel = stack_pop_word(4);
 	SET_SR(m_instr->reg, sel);
 
 	COMMIT_ESP();
