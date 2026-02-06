@@ -546,6 +546,12 @@ uint32_t MachineTest::get_flags_mask() const
 			}
 			break;
 		}
+		case 0xD4: // AAM
+			if(moo.has_exception) {
+				// in case of #DE flags are undefined
+				mask = 0;
+			}
+			break;
 		case 0xF6:
 		case 0xF7: {
 			modrm.load(moo.bytes, b, addr32);
