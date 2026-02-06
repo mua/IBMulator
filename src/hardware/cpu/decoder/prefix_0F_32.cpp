@@ -346,6 +346,10 @@ case 0xAF:
 case 0xB2:
 {
 	m_instr.modrm.load(m_instr.addr32);
+	if(m_instr.modrm.mod_is_reg()) {
+		illegal_opcode();
+		break;
+	}
 	m_instr.fn = CPUExecutorFn::LSS_rd_mp;
 	break;
 }
@@ -363,6 +367,10 @@ case 0xB3:
 case 0xB4:
 {
 	m_instr.modrm.load(m_instr.addr32);
+	if(m_instr.modrm.mod_is_reg()) {
+		illegal_opcode();
+		break;
+	}
 	m_instr.fn = CPUExecutorFn::LFS_rd_mp;
 	break;
 }
@@ -371,6 +379,10 @@ case 0xB4:
 case 0xB5:
 {
 	m_instr.modrm.load(m_instr.addr32);
+	if(m_instr.modrm.mod_is_reg()) {
+		illegal_opcode();
+		break;
+	}
 	m_instr.fn = CPUExecutorFn::LGS_rd_mp;
 	break;
 }
