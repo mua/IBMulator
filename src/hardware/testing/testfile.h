@@ -59,7 +59,7 @@ public:
 	virtual ~TestFile() {}
 
 	const char *path() { return m_path.c_str(); }
-	void load(std::string _test_path, std::string _revocation_list_path);
+	void load(std::string _test_path, const std::vector<std::string> &_revocation_lists);
 	CPUFamily cpu_family();
 	uint8_t cpu_mode();
 	unsigned test_count() { return m_reader.GetHeader().test_count; }

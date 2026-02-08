@@ -730,8 +730,10 @@ void Program::parse_arguments(int argc, char** argv)
 		switch(c) {
 			case 't': {
 				std::string test_file;
-				std::string revocation_file;
+				std::vector<std::string> revocation_files;
 				std::string file_path = optarg;
+				std::string dir, base, ext;
+				FileSys::get_path_parts(file_path.c_str(), dir, base, ext);
 				std::regex reg("^(.*):([0-9]*)$", std::regex::ECMAScript|std::regex::icase);
 				std::smatch match;
 				if(std::regex_match(file_path, match, reg)) {
@@ -755,15 +757,22 @@ void Program::parse_arguments(int argc, char** argv)
 				std::regex rev("^(.*MOO).*$", std::regex::ECMAScript|std::regex::icase);
 				if(std::regex_match(file_path, match, rev)) {
 					file_path = match[1];
-					file_path += ".revocation.list";
+					file_path += "-revocation_list.txt";
 					try {
-						revocation_file = FileSys::check_file_presence(file_path.c_str(), {});
+						auto path = FileSys::check_file_presence(file_path.c_str(), {});
+						PINFOF(LOG_V0, LOG_PROGRAM, "Adding revocation list: '%s'\n", path.c_str());
+						revocation_files.push_back(path);
 					} catch(std::runtime_error &) {	}
 				}
+				try {
+					auto path = FileSys::check_file_presence((dir + "/../revocation_list.txt").c_str(), {});
+					PINFOF(LOG_V0, LOG_PROGRAM, "Adding revocation list: '%s'\n", path.c_str());
+					revocation_files.push_back(path);
+				} catch(std::runtime_error &) {	}
 
 				m_test_file = std::make_unique<TestFile>();
 				try {
-					m_test_file->load(test_file, revocation_file);
+					m_test_file->load(test_file, revocation_files);
 					if(m_test_file->cpu_mode() != 0) {
 						throw std::runtime_error("tests not in real mode");
 					}

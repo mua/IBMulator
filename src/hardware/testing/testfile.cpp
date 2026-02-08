@@ -283,7 +283,9 @@ bool MachineTestResult::analyze(const MachineTest &_test)
 			if(!found) {
 				analysis_log.push_back(str_format("%s Addr=0x%06X not found",
 					memop.operation == MemoryLogger::MEMR ? "MEMR" : "MEMW", memop.phy_addr));
-				result = false;
+				if(_test.moo.cpu_type != Moo::Reader::CPU286) {
+					result = false;
+				}
 			}
 		}
 	}
@@ -459,7 +461,8 @@ uint32_t MachineTest::get_flags_mask() const
 		}
 	}
 	ModRM modrm;
-	switch(moo.bytes[b++]) {
+	uint8_t op = moo.bytes[b++];
+	switch(op) {
 		case 0x08: case 0x09: case 0x0A: case 0x0B: case 0x0C: case 0x0D: // OR
 			mask = FMASK_OF | FMASK_SF | FMASK_ZF | FMASK_PF | FMASK_CF;
 			break;
@@ -522,10 +525,29 @@ uint32_t MachineTest::get_flags_mask() const
 		case 0x6B: // IMUL
 			mask = FMASK_OF | FMASK_CF;
 			break;
-		case 0xC0: case 0xC1:
-		case 0xD0: case 0xD1: case 0xD2: case 0xD3:
+		case 0xC0: case 0xC1: // ROL/ROR/RCL/RCR/SAL/SHR/SAR ib
+		case 0xD0: case 0xD1: // ROL/ROR/RCL/RCR/SAL/SHR/SAR 1
+		case 0xD2: case 0xD3: // ROL/ROR/RCL/RCR/SAL/SHR/SAR CL
 		{
 			modrm.load(moo.bytes, b, addr32);
+
+			uint8_t count = 0;
+			uint8_t size = op32 ? 32 : 16;
+			if(op == 0xD0 || op == 0xD1) {
+				count = 1;
+				if(op == 0xD0) size = 8;
+			} else if(op == 0xD2 || op == 0xD3) {
+				if(moo.cpu_type == Moo::Reader::CPU286) {
+					count = moo.init_state.regs.GetRegister(Moo::REG16::CX) & 0x1f;
+				} else {
+					count = moo.init_state.regs.GetRegister(Moo::REG32::ECX) & 0x1f;
+				}
+				if(op == 0xD2) size = 8;
+			} else { // C0/C1
+				count = moo.bytes[b] & 0x1f;
+				if(op == 0xC0) size = 8;
+			}
+
 			switch(modrm.n) {
 				case 0: // ROL
 				case 1: // ROR
@@ -533,10 +555,26 @@ uint32_t MachineTest::get_flags_mask() const
 					break;
 				case 2: // RCL
 				case 3: // RCR:
+					count = count % (size + 1);
+					[[fallthrough]];
 				case 4: // SHL/SAL
 				case 5: // SHR
 				case 6: // SHL/SAL
-					// we want to test all the flags because we implement UB
+					if(moo.cpu_type == Moo::Reader::CPU286) {
+						mask = FMASK_SF | FMASK_ZF | FMASK_PF;
+						if(count == 1) {
+							mask |= FMASK_OF;
+						}
+						if(modrm.n == 4 || modrm.n == 5 || modrm.n == 6) {
+							if(count < size) {
+								mask |= FMASK_CF;
+							}
+						} else {
+							mask |= FMASK_CF;
+						}
+					} else {
+						// we want to test all the flags because we implement UB
+					}
 					break;
 				case 7: // SAR
 					mask = FMASK_OF | FMASK_SF | FMASK_ZF | FMASK_PF | FMASK_CF;
@@ -550,6 +588,13 @@ uint32_t MachineTest::get_flags_mask() const
 			if(moo.has_exception) {
 				// in case of #DE flags are undefined
 				mask = 0;
+			}
+			break;
+		case 0xD5: // AAD
+			if(moo.cpu_type == Moo::Reader::CPU286) {
+				mask = FMASK_SF | FMASK_ZF | FMASK_PF;
+			} else {
+				// we want to test all the flags because we implement UB
 			}
 			break;
 		case 0xF6:
@@ -584,13 +629,13 @@ MachineTest TestFile::get_test(size_t _index)
 	return { m_reader[_index] };
 }
 
-void TestFile::load(std::string _path, std::string _revocation_list_path)
+void TestFile::load(std::string _path, const std::vector<std::string> &_revocation_lists)
 {
 	m_path = _path;
 
 	m_reader.AddFromFile(_path);
-	if(!_revocation_list_path.empty()) {
-		m_reader.AddRevocationList(_revocation_list_path);
+	for(auto & list : _revocation_lists) {
+		m_reader.AddRevocationList(list);
 	}
 
 	const auto header = m_reader.GetHeader();
@@ -600,11 +645,7 @@ void TestFile::load(std::string _path, std::string _revocation_list_path)
 	PINFOF(LOG_V0, LOG_PROGRAM, " CPU: %s\n", header.cpu_name.c_str());
 	PINFOF(LOG_V0, LOG_PROGRAM, " opcode: 0x%08X\n", meta.opcode);
 	PINFOF(LOG_V0, LOG_PROGRAM, " mnemonic: %s\n", meta.mnemonic.c_str());
-	PINFOF(LOG_V0, LOG_PROGRAM, " test count: %u", header.test_count);
-	if(!_revocation_list_path.empty()) {
-		PINFOF(LOG_V0, LOG_PROGRAM, " (%u revoked)", m_reader.GetRevokedCount());
-	}
-	PINFOF(LOG_V0, LOG_PROGRAM, "\n");
+	PINFOF(LOG_V0, LOG_PROGRAM, " test count: %u\n", header.test_count);
 }
 
 CPUFamily TestFile::cpu_family()

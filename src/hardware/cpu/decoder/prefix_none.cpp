@@ -19,6 +19,7 @@
 
 #include "ibmulator.h"
 #include "hardware/cpu/decoder.h"
+#include "hardware/cpu/executor.h"
 
 
 void CPUDecoder::prefix_none(uint8_t _opcode, unsigned &ctb_idx_, unsigned &ctb_op_)
@@ -1051,7 +1052,7 @@ case 0x8B:
 case 0x8C:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	if(m_instr.modrm.r > REGI_GS) {
+	if(m_instr.modrm.r > REGI_GS || (CPU_FAMILY<=CPU_286 && m_instr.modrm.r >= REGI_FS)) {
 		illegal_opcode();
 	} else {
 		m_instr.fn = CPUExecutorFn::MOV_ew_SR;
@@ -1071,7 +1072,7 @@ case 0x8D:
 case 0x8E:
 {
 	m_instr.modrm.load(m_instr.addr32);
-	if(m_instr.modrm.r > REGI_GS || m_instr.modrm.r == REGI_CS) {
+	if(m_instr.modrm.r > REGI_GS || (CPU_FAMILY<=CPU_286 && m_instr.modrm.r >= REGI_FS) || m_instr.modrm.r == REGI_CS) {
 		illegal_opcode();
 	} else {
 		m_instr.fn = CPUExecutorFn::MOV_SR_ew;

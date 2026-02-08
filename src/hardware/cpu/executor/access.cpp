@@ -116,7 +116,11 @@ void CPUExecutor::seg_check(SegReg & _seg, uint32_t _offset, unsigned _len,
 		bool _write, uint8_t _vector, uint16_t _errcode)
 {
 	if(_vector == CPU_INVALID_INT) {
-		_vector = _seg.is(REG_SS) ? CPU_SS_EXC : CPU_GP_EXC;
+		if(IS_PMODE() || CPU_FAMILY >= CPU_386) {
+			_vector = _seg.is(REG_SS) ? CPU_SS_EXC : CPU_GP_EXC;
+		} else {
+			_vector = CPU_SEG_OVR_EXC;
+		}
 	}
 
 	if(!_seg.desc.valid) {
