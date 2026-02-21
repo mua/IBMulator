@@ -241,7 +241,7 @@ void SysDebugger::on_cmd_save_state(Rml::Event &)
 
 void SysDebugger::on_cmd_restore_state(Rml::Event &)
 {
-	m_gui->restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "",0,0});
+	m_gui->restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "",0,0}, !m_machine->is_paused());
 }
 
 void SysDebugger::on_CPU_step(Rml::Event &)

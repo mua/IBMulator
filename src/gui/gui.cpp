@@ -407,7 +407,7 @@ vec2i GUI::resize_window(int _w, int _h)
 	return vec2i(m_width, m_height);
 }
 
-void GUI::restore_state(StateRecord::Info _info)
+void GUI::restore_state(StateRecord::Info _info, bool _resume)
 {
 	// Main thread here
 	m_machine->cmd_pause(false);
@@ -415,8 +415,11 @@ void GUI::restore_state(StateRecord::Info _info)
 		// Machine or FloppyLoader threads here
 		m_cmd_queue.push([=]() {
 			// Main thread here
-			g_program.restore_state(_info, [this]() {
+			g_program.restore_state(_info, [=]() {
 				show_message("State restored");
+				if(_resume) {
+					m_machine->cmd_resume(false);
+				}
 			}, nullptr);
 		});
 	});
@@ -2673,7 +2676,7 @@ void GUI::pevt_func_quick_load_state(const ProgramEvent::Func&, EventPhase _phas
 		}
 	}
 
-	restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0, 0});
+	restore_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0, 0}, !m_machine->is_paused());
 }
 
 void GUI::pevt_func_grab_mouse(const ProgramEvent::Func&, EventPhase _phase)

@@ -369,7 +369,7 @@ public:
 	inline bool vga_buffering_enabled() const { return m_vga_buffering; }
 	inline bool threads_sync_enabled() const { return m_threads_sync; }
 	
-	void restore_state(StateRecord::Info _info);
+	void restore_state(StateRecord::Info _info, bool _resume);
 	void sig_state_restored();
 	
 	EventTimers & timers() { return m_windows.timers; }

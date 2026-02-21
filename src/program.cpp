@@ -310,9 +310,6 @@ void Program::restore_state(
 			m_gui->sig_state_restored();
 			g_syslog.cmd_resume();
 
-			// mixer resume cmd is issued by the machine
-			m_machine->cmd_resume(false);
-
 			PINFOF(LOG_V0, LOG_PROGRAM, "State restored\n");
 			if(_on_success != nullptr) {
 				_on_success();

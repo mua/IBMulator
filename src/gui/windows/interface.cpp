@@ -1049,7 +1049,7 @@ void Interface::show_state_dialog(bool _save)
 		m_state_load->set_callbacks(
 			[=](StateRecord::Info _info)
 			{
-				m_gui->restore_state(_info);
+				m_gui->restore_state(_info, !machine_was_paused);
 				m_state_save->set_selection(_info.name);
 				m_state_load->hide();
 				m_gui->grab_input(input_was_grabbed);
