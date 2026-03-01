@@ -282,9 +282,10 @@ void Window::unregister_all_handlers(Rml::Element *_root)
 {
 	auto &map = get_event_map();
 	for(auto entry = map.begin(); entry != map.end();) {
-		if(_root->GetId() == entry->first.first || _root->GetElementById(entry->first.first)) {
-			PDEBUGF(LOG_V3, LOG_GUI, "Unregistering handler for event '%s', target id='%s'\n",
-				entry->first.second.c_str(), entry->first.first.c_str());
+		auto el = Rml::ElementUtilities::GetElementById(_root, entry->first.first);
+		if(_root->GetId() == entry->first.first || el) {
+			PDEBUGF(LOG_V3, LOG_GUI, "Unregistering handler for event '%s', target id='%s' (root id = '%s')\n",
+				entry->first.second.c_str(), entry->first.first.c_str(), _root->GetId().c_str());
 			entry = map.erase(entry);
 		} else {
 			entry++;
@@ -317,8 +318,10 @@ void Window::register_target_cb(Rml::Element *_target, const std::string &_elem_
 void Window::unregister_all_target_cb(Rml::Element *_root)
 {
 	for(auto entry = m_target_cb.funcs.begin(); entry != m_target_cb.funcs.end();) {
-		if(_root->GetId() == entry->first.first || _root->GetElementById(entry->first.first)) {
-			PDEBUGF(LOG_V3, LOG_GUI, "Unregistering target callback on '%s', type '%s'\n", entry->first.first.c_str(), entry->first.second.c_str());
+		auto el = Rml::ElementUtilities::GetElementById(_root, entry->first.first);
+		if(_root->GetId() == entry->first.first || el) {
+			PDEBUGF(LOG_V3, LOG_GUI, "Unregistering target callback on '%s', type '%s' (root id = '%s')\n",
+				entry->first.first.c_str(), entry->first.second.c_str(), _root->GetId().c_str());
 			entry = m_target_cb.funcs.erase(entry);
 		} else {
 			entry++;
