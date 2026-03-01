@@ -363,7 +363,7 @@ void VGA::load_ROM(const std::string &_filename)
 void VGA::reset_tiles()
 {
 	m_num_x_tiles = m_s.vmode.imgw / VGA_X_TILESIZE + ((m_s.vmode.imgw % VGA_X_TILESIZE) > 0);
-	m_tile_dirty.resize(uint32_t(m_num_x_tiles * m_s.vmode.yres));
+	m_tile_dirty.resize(uint32_t(m_num_x_tiles * m_s.vmode.yres) + 1);
 	redraw_all();
 }
 
