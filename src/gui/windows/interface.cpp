@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -448,6 +448,8 @@ void Interface::config_changed(bool _startup)
 		if(drive_d) {
 			insert_medium(drive_d, DISK_CD_SECTION);
 		}
+	} else {
+		m_welcome_string = "";
 	}
 
 	set_hdd_active(false);
