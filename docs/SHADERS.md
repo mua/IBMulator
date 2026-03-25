@@ -471,6 +471,7 @@ Values can be surrounded by double quotation marks (`"`). In this case the `"` c
   Default: "video_mode"
 
   E.g.: the famous Mode 13h video mode is 320x200 pixels. It is generated using a screen resolution of 640x400 pixels. Using "crtc" the input texture will have a size of 640x400, whereas with "video_mode" it will have a size of 320x200.
+  Note: when overscan is active "crtc" mode will be used regardless of the value set for `ibmu_input_size`.
 
 - `ibmu_output_size` (string): forces the output to a particular resolution.
   This acts as an override to `shader_output_size` in ibmulator.ini. Can be set to one of these values:

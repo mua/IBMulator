@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -184,6 +184,7 @@ public:
 
 #define DISPLAY_SECTION          "display"
 #define DISPLAY_TYPE             "type"
+#define DISPLAY_OVERSCAN         "overscan"
 #define DISPLAY_NORMAL_SCALE     "normal_scale"
 #define DISPLAY_NORMAL_ASPECT    "normal_aspect"
 #define DISPLAY_NORMAL_SHADER    "normal_shader"

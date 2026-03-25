@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019  Marco Bortolin
+ * Copyright (C) 2018-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -57,11 +57,11 @@ struct VGA_GenRegs
 		}
 		operator const char*() const {
 			return register_to_string((uint8_t)(*this),
-			{{1,"IOS"},{1,"ERAM"},{2,"CS"},{1,"PAGE"},{1,"POL"}});
+			{{1,"IOS"},{1,"ERAM"},{2,"CS"},{1,"PAGE"},{2,"POL"}});
 		}
 	} misc_output;     // Miscellaneous Output
 
 	bool video_enable; // Video Subsystem Enable
 
-	void registers_to_textfile(FILE *_txtfile);
+	const std::string & registers_to_string() const;
 };

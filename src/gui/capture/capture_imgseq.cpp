@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -95,8 +95,8 @@ void CaptureImgSeq::push_video_frame(const VideoFrame &_vf)
 		free_surface();
 		m_surface = SDL_CreateRGBSurface(
 			0,
-			_vf.mode.xres,
-			_vf.mode.yres,
+			_vf.mode.framew,
+			_vf.mode.frameh,
 			32,
 			PALETTE_RMASK,
 			PALETTE_GMASK,

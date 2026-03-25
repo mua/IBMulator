@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -142,6 +142,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 
 		{ DISPLAY_SECTION,
 ";               type: Possible values: color, monochrome.\n"
+";           overscan: Enable overscan borders emulation.\n"
 ";       normal_scale: The viewport's scaling mode (normal/compact GUI modes).\n"
 ";                     Possible values: fill, integer.\n"
 ";                         fill: scale to fill the available area.\n"
@@ -574,6 +575,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 	} },
 	{ DISPLAY_SECTION, {
 		{ DISPLAY_TYPE,             MACHINE_CONFIG, PUBLIC_CFGKEY, "color"                       },
+		{ DISPLAY_OVERSCAN,         MACHINE_CONFIG, PUBLIC_CFGKEY, "no"                          },
 		{ DISPLAY_NORMAL_SCALE,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "fill"                        },
 		{ DISPLAY_NORMAL_ASPECT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "4:3"                         },
 		{ DISPLAY_FILTER,           PROGRAM_CONFIG, PUBLIC_CFGKEY, "bilinear"                    },

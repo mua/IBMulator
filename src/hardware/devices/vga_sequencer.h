@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019  Marco Bortolin
+ * Copyright (C) 2018-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -175,7 +175,7 @@ struct VGA_Sequencer
 	// DEBUGGING
 	operator const char*() const { return register_to_string(address); }
 	const char * register_to_string(uint8_t _index) const;
-	void registers_to_textfile(FILE *_txtfile);
+	const std::string & registers_to_string() const;
 
 	static constexpr const std::array<const char*, SEQ_REGCOUNT> regnames = {{
 		"Reset",

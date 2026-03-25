@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019  Marco Bortolin
+ * Copyright (C) 2018-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -21,11 +21,13 @@
 #include "vga_genregs.h"
 
 
-void VGA_GenRegs::registers_to_textfile(FILE *_file)
+const std::string & VGA_GenRegs::registers_to_string() const
 {
-	fprintf(_file, "0x%02X %*u  Miscellaneous Output [%s]\n",
-			(uint8_t)misc_output, 3, (uint8_t)misc_output, (const char*)misc_output);
+	thread_local static std::string s;
+	s = "";
 
-	fprintf(_file, "0x%02X %*u  Video Subsystem Enable\n", video_enable, 3, video_enable);
+	s += str_format("0x%02X %03u  Miscellaneous Output [%s]\n", (uint8_t)misc_output, (uint8_t)misc_output, (const char*)misc_output);
+	s += str_format("0x%02X %03u  Video Subsystem Enable\n", video_enable, video_enable);
+
+	return s;
 }
-

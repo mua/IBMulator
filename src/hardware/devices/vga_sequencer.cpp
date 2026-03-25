@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019  Marco Bortolin
+ * Copyright (C) 2018-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -70,7 +70,7 @@ std::array<uint8_t,SEQ_REGCOUNT> VGA_Sequencer::get_registers()
 
 const char * VGA_Sequencer::register_to_string(uint8_t _index) const
 {
-	static std::string s;
+	thread_local static std::string s;
 	s = regnames[_index%SEQ_REGCOUNT];
 	switch(_index) {
 		case SEQ_RESET    : s+=" ["; s+=(const char*)reset;    s+="]"; break;
@@ -82,9 +82,12 @@ const char * VGA_Sequencer::register_to_string(uint8_t _index) const
 	return s.c_str();
 }
 
-void VGA_Sequencer::registers_to_textfile(FILE *_file)
+const std::string & VGA_Sequencer::registers_to_string() const
 {
+	thread_local static std::string s;
+	s = "";
 	for(int i=0; i<SEQ_REGCOUNT; i++) {
-		fprintf(_file, "0x%02X 0x%02X %*u  %s\n", i, get_register(i), 3, get_register(i), register_to_string(i));
+		s += str_format("0x%02X 0x%02X %03u  %s\n", i, get_register(i), get_register(i), register_to_string(i));
 	}
+	return s;
 }

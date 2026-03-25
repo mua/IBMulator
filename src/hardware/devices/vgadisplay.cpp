@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -49,18 +49,20 @@ void FrameBuffer::clear()
 void FrameBuffer::copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) const
 {
 	uint8_t *src = (uint8_t*)&m_buffer[0];
-	const unsigned w = _mode.xres;
-	if(w > m_width) {
+	if(_mode.framew > m_width) {
 		return;
 	}
-	const unsigned h = _mode.yres;
-	if(h > m_height) {
+	if(_mode.frameh > m_height) {
 		return;
 	}
+
 	const unsigned spitch = m_width * m_bypp;
-	const unsigned dpitch = w * m_bypp;
-	for(unsigned y=0; y<h; y++) {
-		for(unsigned x=0; x<w; x++) {
+	const unsigned dpitch = _mode.framew * m_bypp;
+
+	for(unsigned y = 0; y < _mode.frameh; y++) {
+		for(unsigned x = 0; x < _mode.framew; x++) {
+			// FIXME this is UB!
+			// TODO use std::memcpy() or consider C++23's std::start_lifetime_as
 			*((uint32_t*)(&_dest[y*dpitch + x*m_bypp])) = *((uint32_t*)(&src[y*spitch + x*m_bypp]));
 		}
 	}
@@ -69,6 +71,8 @@ void FrameBuffer::copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) con
 VGADisplay::VGADisplay()
 {
 	m_s.mode.mode = VGA_M_TEXT;
+	m_s.mode.framew = 640;
+	m_s.mode.frameh = 400;
 	m_s.mode.xres = 640;
 	m_s.mode.yres = 400;
 	m_s.mode.imgw = 640;
@@ -79,7 +83,7 @@ VGADisplay::VGADisplay()
 	m_s.mode.cheight = 16;
 	m_s.mode.nscans = 1;
 	m_s.mode.ndots = 1;
-	m_s.mode.borders = {};
+	m_s.mode.overscan = { 0,0, 0,0, false };
 
 	m_s.timings = {};
 	m_s.timings.vfreq = 70.0;
@@ -110,6 +114,8 @@ VGADisplay::VGADisplay()
 	palette_change(13, 255,  85, 255); // light magenta
 	palette_change(14, 255, 255,  85); // yellow
 	palette_change(15, 255, 255, 255); // white
+
+	m_s.overscan_color = 0;
 
 	for(int i=0; i<256; i++) {
 		for(int j=0; j<16; j++) {
@@ -226,9 +232,6 @@ void VGADisplay::unregister_sink(int _id)
 	}
 }
 
-// clear_screen()
-//
-// Called to request that the VGA region is cleared.
 void VGADisplay::clear_screen()
 {
 	m_fb.clear();
@@ -284,29 +287,78 @@ void VGADisplay::palette_change(uint8_t _index, uint8_t _red, uint8_t _green, ui
 	m_s.palette[COLOR_MODE_MONO_INVERTED][_index] = PALETTE_ENTRY(mono_inv, mono_inv, mono_inv);
 }
 
+void VGADisplay::set_overscan_color(uint8_t _index)
+{
+	m_s.overscan_color = _index;
+}
+
 // set_mode()
 //
 // Called when the VGA mode changes.
 //
-void VGADisplay::set_mode(const VideoModeInfo &_mode)
+void VGADisplay::set_mode(const VideoModeInfo &_mode, const VideoTimings &_timings)
 {
+	set_timings(_timings);
+
 	m_s.mode = _mode;
 	m_s.valid_mode = true;
 
-	PDEBUGF(LOG_V1, LOG_VGA, "screen: %ux%u\n", _mode.xres, _mode.yres);
+	PDEBUGF(LOG_V1, LOG_VGA, "screen: %ux%u (%ux%u)\n",
+			_mode.xres, _mode.yres,
+			_mode.framew, _mode.frameh);
 
-	if(_mode.xres > m_fb.width()) {
-		PWARNF(LOG_V1, LOG_VGA, "requested x res (%d) is greater than the maximum (%d)\n", _mode.xres, m_fb.width());
+	if(_mode.framew <= 1) {
+		PWARNF(LOG_V1, LOG_VGA, "requested x res (%d) is lower than the minimum (1)\n", _mode.framew);
 		m_s.valid_mode = false;
-		m_s.mode.xres = m_fb.width();
 	}
-	if(_mode.yres > m_fb.height()) {
-		PWARNF(LOG_V1, LOG_VGA, "requested y res (%d) is greater than the maximum (%d)\n", _mode.yres, m_fb.height());
+	if(_mode.framew > m_fb.width()) {
+		PWARNF(LOG_V1, LOG_VGA, "requested x res (%d) is greater than the maximum (%d)\n", _mode.framew, m_fb.width());
 		m_s.valid_mode = false;
-		m_s.mode.yres = m_fb.height();
 	}
+	if(_mode.frameh <= 1) {
+		PWARNF(LOG_V1, LOG_VGA, "requested y res (%d) is lower than the minimum (1)\n", _mode.frameh);
+		m_s.valid_mode = false;
+	}
+	if(_mode.frameh > m_fb.height()) {
+		PWARNF(LOG_V1, LOG_VGA, "requested y res (%d) is greater than the maximum (%d)\n", _mode.frameh, m_fb.height());
+		m_s.valid_mode = false;
+	}
+
+	m_s.xoffset = 0;
+	m_s.yoffset = 0;
+
 	if(!m_s.valid_mode) {
+		m_s.mode.framew = m_fb.width();
+		if(m_s.mode.xres > m_fb.height()) {
+			m_s.mode.xres = m_fb.height();
+		}
+		m_s.mode.frameh = m_fb.height();
+		if(m_s.mode.yres > m_fb.height()) {
+			m_s.mode.yres = m_fb.height();
+		}
+		m_s.mode.overscan.left = 0;
+		m_s.mode.overscan.right = 0;
+		m_s.mode.overscan.top = 0;
+		m_s.mode.overscan.bottom = 0;
+
 		clear_screen();
+	} else {
+		if(m_s.mode.framew > m_s.mode.xres) {
+			unsigned width = m_s.mode.overscan.left + m_s.mode.xres + m_s.mode.overscan.right;
+			assert(m_s.mode.framew >= width);
+			unsigned left_blank = (m_s.mode.framew - width) >> 1;
+
+			m_s.xoffset = left_blank + m_s.mode.overscan.left;
+		}
+		if(m_s.mode.frameh > m_s.mode.yres) {
+			unsigned height = m_s.mode.overscan.top + m_s.mode.yres + m_s.mode.overscan.bottom;
+			assert(m_s.mode.frameh >= height);
+
+			// this can be equal to m_s.timings.vblank_skip, but it might not be depending on how the frame has been set up
+			unsigned top_blank = m_s.mode.frameh - height;
+
+			m_s.yoffset = top_blank + m_s.mode.overscan.top;
+		}
 	}
 
 	set_dimension_updated();
@@ -339,13 +391,19 @@ void VGADisplay::gfx_screen_line_update(
 		uint8_t *_tiles,
 		uint16_t _tiles_count)
 {
-	if(!m_s.valid_mode || _fbline >= m_s.mode.yres) {
+	if(!m_s.valid_mode) {
 		return;
 	}
 
-	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_fb.width();
+	const unsigned fbline = _fbline + m_s.yoffset;
+
+	if(fbline >= m_s.mode.frameh) {
+		return;
+	}
+
+	uint32_t *fb_line_ptr = &m_fb[0] + (fbline * m_fb.width());
 	bool dc = (m_s.mode.ndots == 2);
-	
+
 	for(uint16_t tile_id=0; tile_id<_tiles_count; tile_id++, _tiles++) {
 		if(*_tiles == VGA_TILE_CLEAN) {
 			continue;
@@ -358,7 +416,7 @@ void VGADisplay::gfx_screen_line_update(
 			}
 			assert(pixel_x < _linedata.size());
 			uint32_t color = m_s.palette[m_color_mode][_linedata[pixel_x]];
-			uint32_t *fb_point_ptr = &fb_line_ptr[pixel_x << dc];
+			uint32_t *fb_point_ptr = &fb_line_ptr[m_s.xoffset + (pixel_x << dc)];
 			*fb_point_ptr = color;
 			if(dc) {
 				*(fb_point_ptr+1) = color;
@@ -368,7 +426,7 @@ void VGADisplay::gfx_screen_line_update(
 	}
 }
 
-// gfx_scanline_update()
+// gfx_screen_line_update()
 //
 // Called in VGA graphics mode to request that a line be drawn to the screen,
 // since the entire line has changed.
@@ -378,16 +436,22 @@ void VGADisplay::gfx_screen_line_update(
 void VGADisplay::gfx_screen_line_update(unsigned _fbline,
 		std::vector<uint8_t> &_linedata)
 {
-	if(!m_s.valid_mode || _fbline >= m_s.mode.yres) {
+	if(!m_s.valid_mode) {
 		return;
 	}
 
-	uint32_t *fb_line_ptr = &m_fb[0] + _fbline * m_fb.width();
+	const unsigned fbline = _fbline + m_s.yoffset;
+
+	if(fbline >= m_s.mode.frameh) {
+		return;
+	}
+
+	uint32_t *fb_line_ptr = &m_fb[0] + (fbline * m_fb.width());
 	bool dc = (m_s.mode.ndots == 2);
-	
+
 	for(unsigned pixel_x=0; pixel_x<m_s.mode.imgw; pixel_x++) {
 		uint32_t color = m_s.palette[m_color_mode][_linedata[pixel_x]];
-		uint32_t *fb_point_ptr = &fb_line_ptr[pixel_x << dc];
+		uint32_t *fb_point_ptr = &fb_line_ptr[m_s.xoffset + (pixel_x << dc)];
 		*fb_point_ptr = color;
 		if(dc) {
 			*(fb_point_ptr+1) = color;
@@ -415,7 +479,7 @@ void VGADisplay::gfx_screen_line_update(unsigned _fbline,
 void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		unsigned _cursor_x, unsigned _cursor_y, TextModeInfo *_tm_info)
 {
-	if(!m_s.valid_mode) {
+	if(!m_s.valid_mode || !m_s.mode.textcols) {
 		return;
 	}
 
@@ -449,7 +513,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 
 	unsigned line_compare = m_s.line_compare >> _tm_info->double_scanning;
 
-	uint32_t *buf_row = &m_fb[0];
+	uint32_t *buf_row = &m_fb[m_s.xoffset] + (m_s.yoffset * m_fb.width());
 
 	unsigned curs;
 	// first invalidate character at previous and new cursor location
@@ -512,7 +576,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		}
 		uint8_t *new_line = _new_text;
 		uint8_t *old_line = _old_text;
-		unsigned x = 0;
+		//unsigned x = 0;
 		unsigned offset = cs_y * _tm_info->line_offset;
 		do {
 			uint8_t cfwidth = m_s.mode.cwidth;
@@ -601,13 +665,13 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 				buf = buf_char;
 			}
 			// move to next char location on screen
-			buf += cfwidth<<_tm_info->double_dot;
+			buf += cfwidth << _tm_info->double_dot;
 
 			// select next char in old/new text
 			_new_text += 2;
 			_old_text += 2;
 			offset += 2;
-			x++;
+			//x++;
 
 			// process one entire horizontal row
 		} while(--hchars);
@@ -637,6 +701,101 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 	m_s.h_panning = _tm_info->h_panning;
 	m_s.prev_cursor_x = _cursor_x;
 	m_s.prev_cursor_y = _cursor_y;
+}
+
+unsigned VGADisplay::overscan_screen_line_update(unsigned _img_scanline)
+{
+	if(!m_s.valid_mode || !m_s.mode.overscan.present) {
+		return 0;
+	}
+
+	// 2 line fills (left and right borders)
+	// per-line rendering allows for special effects,
+	// tho I'm currently not aware of any software/demo using such fx
+
+	const unsigned fbline = m_s.yoffset + _img_scanline;
+	const unsigned fblineN = m_s.yoffset + (m_s.mode.yres - 1);
+
+	if(fbline >= m_s.mode.frameh || fbline < m_s.yoffset || fbline > fblineN) {
+		return 0;
+	}
+
+	uint32_t color = m_s.palette[m_color_mode][m_s.overscan_color];
+	if(m_s.mode.overscan.left) {
+		int x = m_s.xoffset - m_s.mode.overscan.left;
+		uint32_t *fb_line_ptr = &m_fb[x] + (fbline * m_fb.width());
+		for(int w = 0; w < m_s.mode.overscan.left; w++, fb_line_ptr++) {
+			*fb_line_ptr = color;
+		}
+	}
+	if(m_s.mode.overscan.right) {
+		int x = m_s.xoffset + m_s.mode.xres;
+		uint32_t *fb_line_ptr = &m_fb[x] + (fbline * m_fb.width());
+		for(int w = 0; w < m_s.mode.overscan.right; w++, fb_line_ptr++) {
+			*fb_line_ptr = color;
+		}
+	}
+	return m_s.mode.overscan.left + m_s.mode.overscan.right;
+}
+
+unsigned VGADisplay::overscan_screen_update(OverscanBorder _side)
+{
+	if(!m_s.valid_mode || !m_s.mode.overscan.present) {
+		return 0;
+	}
+
+	// rectangle fill
+
+	int width = 0, height = 0;
+	int x = 0, y = 0;
+
+	switch(_side) {
+		case OverscanBorder::left: {
+			x = m_s.xoffset - m_s.mode.overscan.left;
+			y = m_s.yoffset;
+			width = m_s.mode.overscan.left;
+			height = m_s.mode.yres;
+			break;
+		}
+		case OverscanBorder::right: {
+			x = m_s.xoffset + m_s.mode.xres;
+			y = m_s.yoffset;
+			width = m_s.mode.overscan.right;
+			height = m_s.mode.yres;
+			break;
+		}
+		case OverscanBorder::top: {
+			x = m_s.xoffset - m_s.mode.overscan.left;
+			y = m_s.yoffset - m_s.mode.overscan.top;
+			width = m_s.mode.overscan.left + m_s.mode.xres + m_s.mode.overscan.right;
+			height = m_s.mode.overscan.top;
+			break;
+		}
+		case OverscanBorder::bottom: {
+			x = m_s.xoffset - m_s.mode.overscan.left;
+			y = m_s.yoffset + m_s.mode.yres;
+			width = m_s.mode.overscan.left + m_s.mode.xres + m_s.mode.overscan.right;
+			height = m_s.mode.overscan.bottom;
+			break;
+		}
+	}
+
+	assert(x >= 0 && y >= 0);
+	assert(x + width <= m_fb.width());
+	assert(y + height <= m_fb.height());
+
+	if(width && height) {
+		uint32_t color = m_s.palette[m_color_mode][m_s.overscan_color];
+		for(int h = 0; h < height; h++) {
+			uint32_t *fb_line_ptr = &m_fb[x] + ((y + h) * m_fb.width());
+			for(int w = 0; w < width; w++, fb_line_ptr++) {
+				*fb_line_ptr = color;
+			}
+		}
+		return width * height;
+	}
+
+	return 0;
 }
 
 // copy_screen

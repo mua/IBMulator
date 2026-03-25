@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023  Marco Bortolin
+ * Copyright (C) 2023-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -95,7 +95,7 @@ public:
 		float crt_height = 650.f;   // CRT glass height
 		float bezel_width = 119.f;  // bezel width (left and right bezels must be symmetrical)
 		float bezel_height = 105.f; // top bezel height
-		float vga_scale = 0.85f;    // the size of the VGA image as a scale factor relative to the CRT
+		float vga_scale = 0.90f;    // the size of the VGA image as a scale factor relative to the CRT
 	};
 
 	enum InputSize {

@@ -5,73 +5,234 @@
 		<link type="text/rcss" href="devstatus.rcss"/>
 	</head>
 	<body template="window">
-		<section id="vga">
-			<h2>VGA</h2>
+	<tabset id="devices">
+
+		<tab>VGA</tab>
+		<panel id="vga">
+
 			<div class="toolbar">
 				<button id="cmd_vga_update"><btnicon /></button>
 				<button id="cmd_vga_screenshot" class="text">screenshot</button>
-				<button id="cmd_vga_dump_state" class="text">dump state</button>
+				<button id="cmd_vga_dump_state" class="text">dump</button>
+				<button id="cmd_vga_skip_scanl" class="text">step line</button>
+				<button id="cmd_vga_skip_frame" class="text">step frame</button>
 			</div>
+
+			<div class="device_container">
+
 			<table class="default">
-				<tr><th class="large" style="width:50dp;">mode</th><td class="large" id="vga_mode">?</td></tr>
-				<tr><th class="large" style="width:50dp;">screen</th><td class="large" id="vga_screen">?</td></tr>
+				<tr><th style="width:50dp;">mode</th><td id="vga_mode"></td></tr>
+				<tr><th style="width:50dp;">screen</th><td id="vga_screen"></td></tr>
 			</table>
-			<p style="font-size:80%;">CRT Controller</p>
-			<table class="default">
-				<tr>
-					<th class="small">htotal</th> <td class="small" id="vga_htotal">?</td>
-					<th class="small">hdend</th>  <td class="small" id="vga_hdend">?</td>
-					<th class="small">hblank</th> <td class="small" id="vga_hblank">?</td>
-					<th class="small">hretr</th>  <td class="small" id="vga_hretr">?</td>
-				</tr>
-			</table>
-			<table class="default">
-				<tr>
-					<th class="small">vtotal</th> <td class="small" id="vga_vtotal">?</td>
-					<th class="small">vdend</th>  <td class="small" id="vga_vdend">?</td>
-					<th class="small">vblank</th> <td class="small" id="vga_vblank">?</td>
-					<th class="small">vretr</th>  <td class="small" id="vga_vretr">?</td>
-				</tr>
-			</table>
-			<table class="default">
-				<tr>
-					<th class="small" style="width:70dp;">start address</th>
-					<td  class="small" id="vga_startaddr_hi">?</td>
-					<td  class="small" id="vga_startaddr_lo">?</td>
-					<td  class="small" id="vga_startaddr_latch">?</td>
-				</tr>
-			</table>
-			<table class="default">
-				<tr>
-					<th class="small">scanline</th>
-					<td id="vga_scanl" class="small">?</td>
-					<td id="vga_disp_phase" class="small led">disp</td>
-					<td id="vga_hretr_phase" class="small led">hretr</td>
-					<td id="vga_vretr_phase" class="small led">vretr</td>
-				</tr>
-			</table>
-			<div id="vga_stats">
-			<p style="font-size:80%;">Stats</p>
-			<table class="default" id="vgastats">
-				<tr>
-					<th class="small">frame</th>
-						<td id="vga_frame_cnt" class="small">0</td>
-					<th class="small">upd. pix</th>
-						<td id="vga_pix_upd" class="small">0</td>
-						<td id="vga_upd" class="small led">upd</td>
-				</tr>
-				<tr>
-					<th class="small">saddr line</th>
-						<td id="vga_saddr_line" class="small">?</td>
-					<th class="small">pal line</th>
-						<td id="vga_pal_line" class="small">?</td>
-				</tr>
-			</table>
+
+			<div class="toolbar vga_section">
+			<button id="cmd_vga_stats_show" class="expand"><btnicon /></button>
+			<span>Status</span> 
 			</div>
-		</section>
-		<section id="pic">
-			<h2>PIC</h2>
-			<button id="cmd_pic_update"><btnicon /></button>
+			<div id="vga_stats" class="d-none">
+				<table class="default">
+					<tr>
+						<th>frame</th>
+							<td id="vga_frame_cnt"></td>
+						<th>upd. pix</th>
+							<td id="vga_pix_upd"></td>
+							<td id="vga_upd" class="led">upd</td>
+					</tr>
+					<tr>
+						<th>saddr line</th>
+							<td id="vga_saddr_line"></td>
+						<th>pal line</th>
+							<td id="vga_pal_line"></td>
+					</tr>
+				</table>
+				<table class="default">
+					<tr>
+						<th>scanline</th>
+						<td id="vga_scanl"></td>
+						<td id="vga_disp_phase"  class="led">disp</td>
+						<td id="vga_hretr_phase" class="led">hretr</td>
+						<td id="vga_vretr_phase" class="led">vretr</td>
+					</tr>
+				</table>
+			</div>
+			<div class="clear"></div>
+
+
+			<div class="toolbar vga_section">
+			<button id="cmd_vga_genreg_show" class="expand"><btnicon /></button>
+			<span>General registers</span> 
+			</div>
+
+			<div id="vga_genreg" class="d-none">
+				<table class="default">
+					<tr>
+						<th style="width:50dp;">clock</th>
+						<td id="vga_clock">0</td>
+						<th style="width:80dp;">sync pol</th>
+						<td id="vga_polarity">0</td>
+					</tr>
+				</table>
+				<p id="vga_gen_registers" class="regdump">registers</p>
+			</div>
+			<div class="clear"></div>
+
+			<div class="toolbar vga_section">
+			<button id="cmd_vga_seq_show" class="expand"><btnicon /></button>
+			<span>Sequencer</span> 
+			</div>
+
+			<div id="vga_seq" class="d-none">
+				<table class="default">
+					<tr>
+						<th style="width:80dp;">char width</th>
+						<td id="vga_cwidth">0</td>
+						<th style="width:80dp;">dot clock</th>
+						<td id="vga_dotclock">0</td>
+					</tr>
+				</table>
+				<p id="vga_seq_registers" class="regdump">registers</p>
+			</div>
+			<div class="clear"></div>
+
+			<div class="toolbar vga_section">
+			<button id="cmd_vga_crtc_show" class="expand"><btnicon /></button>
+			<span>CRT Controller</span> 
+			</div>
+
+			<div id="vga_crtc" class="d-none">
+				<table class="default">
+					<tr>
+						<th style="width:40dp;">MSL</th>
+						<td id="vga_msl">0</td>
+						<th style="width:40dp;">DSC</th>
+						<td id="vga_dsc">0</td>
+						<th>scanl/imgl</th>
+						<td id="vga_scanlimgl">0</td>
+					</tr>
+				</table>
+	
+				<table class="default" id="vga_horizontal">
+					<tr><th colspan="9">Horizontal timings</th></tr>
+	
+					<!-- characters -->
+					<tr>
+						<th rowspan="2">chars</th>
+						<td rowspan="2" id="vga_htotal"  class="vga_total">period</td>
+						<td rowspan="2" id="vga_hdisp"   class="vga_disp">disp</td>
+						<td colspan="2" id="vga_hrblank" class="vga_blank">front porch</td>
+						<td colspan="2" id="vga_hretr"   class="vga_retr">retrace</td>
+						<td colspan="2" id="vga_hlblank" class="vga_blank">back porch</td>
+					</tr>
+					<tr>
+						<td id="vga_hrborder" class="vga_border">R bd</td>
+						<td id="vga_hbstart"  class="vga_blank">bstart</td>
+						<td id="vga_hrstart"  class="vga_retr">rstart</td>
+						<td id="vga_hrend"    class="vga_retr">rend</td>
+						<td id="vga_hbend"    class="vga_blank">bend</td>
+						<td id="vga_hlborder" class="vga_border">L bd</td>
+					</tr>
+
+					<!-- pixels -->
+					<tr>
+						<th rowspan="2">pixels</th>
+						<td rowspan="2" id="vga_px_htotal"  class="vga_total">period</td>
+						<td rowspan="2" id="vga_px_hdisp"   class="vga_disp">disp</td>
+						<td colspan="2" id="vga_px_hrblank" class="vga_blank">front porch</td>
+						<td colspan="2" id="vga_px_hretr"   class="vga_retr">retrace</td>
+						<td colspan="2" id="vga_px_hlblank" class="vga_blank">back porch</td>
+
+					</tr>
+					<tr>
+						<td id="vga_px_hrborder" class="vga_border">R bd</td>
+						<td id="vga_px_hbstart"  class="vga_blank">bstart</td>
+						<td id="vga_px_hrstart"  class="vga_retr">rstart</td>
+						<td id="vga_px_hrend"    class="vga_retr">rend</td>
+						<td id="vga_px_hbend"    class="vga_blank">bend</td>
+						<td id="vga_px_hlborder" class="vga_border">L bd</td>
+					</tr>
+
+					<!-- microsecods -->
+					<tr>
+						<th rowspan="2">μs</th>
+						<td rowspan="2" id="vga_us_htotal"  class="vga_total">period</td>
+						<td rowspan="2" id="vga_us_hdisp"   class="vga_disp">disp</td>
+						<td colspan="2" id="vga_us_hrblank" class="vga_blank">front porch</td>
+						<td colspan="2" id="vga_us_hretr"   class="vga_retr">retrace</td>
+						<td colspan="2" id="vga_us_hlblank" class="vga_blank">back porch</td>
+					</tr>
+					<tr>
+						<td id="vga_us_hrborder" class="vga_border">R bd</td>
+						<td id="vga_us_hbstart"  class="vga_blank">bstart</td>
+						<td id="vga_us_hrstart"  class="vga_retr">rstart</td>
+						<td id="vga_us_hrend"    class="vga_retr">rend</td>
+						<td id="vga_us_hbend"    class="vga_blank">bend</td>
+						<td id="vga_us_hlborder" class="vga_border">L bd</td>
+					</tr>
+				</table>
+
+				<table class="default" id="vga_vertical">
+					<tr><th colspan="9">Vertical timings</th></tr>
+
+					<!-- lines -->
+					<tr>
+						<th rowspan="2">lines</th>
+						<td rowspan="2" id="vga_vtotal"  class="vga_total">total</td>
+						<td rowspan="2" id="vga_vdisp"   class="vga_disp">disp</td>
+						<td colspan="2" id="vga_vbblank" class="vga_blank">front porch</td>
+						<td colspan="2" id="vga_vretr"   class="vga_retr">retrace</td>
+						<td colspan="2" id="vga_vtblank" class="vga_blank">back porch</td>
+					</tr>
+					<tr>
+						<td id="vga_vbborder" class="vga_border">B bd</td>
+						<td id="vga_vbstart"  class="vga_blank">bstart</td>
+						<td id="vga_vrstart"  class="vga_retr">rstart</td>
+						<td id="vga_vrend"    class="vga_retr">rend</td>
+						<td id="vga_vbend"    class="vga_blank">bend</td>
+						<td id="vga_vtborder" class="vga_border">T bd</td>
+					</tr>
+
+					<!-- milliseconds -->
+					<tr>
+						<th rowspan="2">ms</th>
+						<td rowspan="2" id="vga_ms_vtotal"  class="vga_total">total</td>
+						<td rowspan="2" id="vga_ms_vdisp"   class="vga_disp">disp</td>
+						<td colspan="2" id="vga_ms_vbblank" class="vga_blank">front porch</td>
+						<td colspan="2" id="vga_ms_vretr"   class="vga_retr">retrace</td>
+						<td colspan="2" id="vga_ms_vtblank" class="vga_blank">back porch</td>
+					</tr>
+					<tr>
+						<td id="vga_ms_vbborder" class="vga_border">B bd</td>
+						<td id="vga_ms_vbstart"  class="vga_blank">bstart</td>
+						<td id="vga_ms_vrstart"  class="vga_retr">rstart</td>
+						<td id="vga_ms_vrend"    class="vga_retr">rend</td>
+						<td id="vga_ms_vbend"    class="vga_blank">bend</td>
+						<td id="vga_ms_vtborder" class="vga_border">T bd</td>
+					</tr>
+				</table>
+
+				<table class="default">
+					<tr>
+						<th>vblank skip</th>
+						<td id="vga_vblank_skip"></td>
+						<th>last vis. line</th>
+						<td id="vga_last_vis_sl"></td>
+					</tr>
+				</table>
+
+				<p id="vga_crtc_registers" class="regdump">registers</p>
+				<p id="vga_crtc_latches" class="regdump">latches</p>
+			</div>
+			<div class="clear"></div>
+			</div>
+		</panel>
+
+		<tab>PIC</tab>
+		<panel id="pic">
+			<div class="toolbar">
+				<button id="cmd_pic_update"><btnicon /></button>
+			</div>
+
+			<div class="device_container">
 			<table class="default">
 			<tr>
 				<th>IRQ</th>
@@ -118,18 +279,26 @@
 				<td id="pic_isr_14" class="led">14</td><td id="pic_isr_15" class="led">15</td>
 			</tr>
 			</table>
-		</section>
-		<section id="pit">
-			<h2>PIT</h2>
-			<button id="cmd_pit_update"><btnicon /></button>
+			</div>
+		</panel>
+		
+		<tab>PIT</tab>
+		<panel id="pit">
+			<div class="toolbar">
+				<button id="cmd_pit_update"><btnicon /></button>
+			</div>
+			<div class="device_container">
 			<table class="default">
-				<tr><th class="t"></th>  <th>C0</th>                <th>C1</th>                <th>C2</th></tr>
-				<tr><th>mode</th>    <td id="pit_0_mode">0</td> <td id="pit_1_mode">0</td> <td id="pit_2_mode">0</td> </tr>
-				<tr><th>CNT</th>     <td id="pit_0_cnt">0</td>  <td id="pit_1_cnt">0</td>  <td id="pit_2_cnt">0</td>  </tr>
-				<tr><th>GATE</th>    <td id="pit_0_gate">0</td> <td id="pit_1_gate">0</td> <td id="pit_2_gate">0</td> </tr>
-				<tr><th>OUT</th>     <td id="pit_0_out" class="led">0</td>  <td id="pit_1_out" class="led">0</td>  <td id="pit_2_out" class="led">0</td>  </tr>
-				<tr><th>in</th>      <td id="pit_0_in">0</td>  <td id="pit_1_in">0</td>  <td id="pit_2_in">0</td>  </tr>
+				<tr><th class="t"></th>  <th>C0</th>                            <th>C1</th>                            <th>C2</th></tr>
+				<tr><th>mode</th>        <td id="pit_0_mode">0</td>             <td id="pit_1_mode">0</td>             <td id="pit_2_mode">0</td> </tr>
+				<tr><th>CNT</th>         <td id="pit_0_cnt">0</td>              <td id="pit_1_cnt">0</td>              <td id="pit_2_cnt">0</td>  </tr>
+				<tr><th>GATE</th>        <td id="pit_0_gate">0</td>             <td id="pit_1_gate">0</td>             <td id="pit_2_gate">0</td> </tr>
+				<tr><th>OUT</th>         <td id="pit_0_out" class="led">0</td>  <td id="pit_1_out" class="led">0</td>  <td id="pit_2_out" class="led">0</td>  </tr>
+				<tr><th>in</th>          <td id="pit_0_in">0</td>               <td id="pit_1_in">0</td>               <td id="pit_2_in">0</td>  </tr>
 			</table>
-		</section>
+			</div>
+		</panel>
+		
+	</tabset>
 	</body>
 </rml>

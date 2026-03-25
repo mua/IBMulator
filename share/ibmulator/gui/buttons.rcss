@@ -1,18 +1,49 @@
 button,
 input.submit,
 input.checkbox,
-input.radio
+input.radio,
+tab
 {
-	display: block;
-	box-sizing: border-box;
-	height: 20dp;
-	width: 20dp;
 	font-size: 18dp;
 	text-align: center;
 	tab-index: auto;
 	color: #000000ff;
 	background-color: #FFFFFFA0;
 	padding: 0;
+}
+
+button,
+input.submit,
+input.checkbox,
+input.radio
+{
+	display: block;
+	box-sizing: border-box;
+	height: 20dp;
+	width: 20dp;
+}
+
+tab
+{
+	display: inline-block;
+	padding-left: 8dp;
+	padding-right: 6dp;
+}
+
+tab:selected
+{
+	border-bottom: 2dp;
+	border-color: #fb6936;
+}
+
+tab:focus
+{
+	
+}
+
+tab:selected:focus
+{
+
 }
 
 @media (theme: light)
@@ -26,13 +57,18 @@ input.radio
 		border-color: #e7e8e6ff;
 		background-color: #e7e8e6ff;
 	}
+
+	tab
+	{
+		background-color: #e7e8e6ff;
+	}
 }
 
 .toolbar
 {
 	display: inline-block;
 	overflow: hidden;
-	margin-bottom: -4dp;
+	margin-bottom: -6dp;
 }
 
 .toolbar > div,
@@ -65,19 +101,22 @@ input.checkbox span
 	focus: none;
 }
 
-button:hover
+button:hover,
+tab:hover
 {
 	background-color: #FFFFFFF0;
 }
 
-button:focus
+button:focus,
+tab:focus
 {
 	background-color: #FF8000F0;
 }
 
 @media (theme: light)
 {
-	button:focus
+	button:focus,
+	tab:focus
 	{
 		border-color: #204d6e;
 		background-color: #82b3d4ff;
@@ -803,3 +842,13 @@ scrollbarhorizontal sliderarrowinc
 	decorator: image(sliderinc-h);
 }
 
+button.expand btnicon
+{
+	decorator: image(icons/right.png);
+	image-color: #000000;
+}
+
+button.expanded btnicon
+{
+	decorator: image(icons/down.png);
+}

@@ -112,6 +112,7 @@ share/ibmulator/gui/icons/restore.png \
 share/ibmulator/gui/icons/restore_up.png \
 share/ibmulator/gui/icons/resume_active.png \
 share/ibmulator/gui/icons/resume.png \
+share/ibmulator/gui/icons/right.png \
 share/ibmulator/gui/icons/save_down.png \
 share/ibmulator/gui/icons/save.png \
 share/ibmulator/gui/icons/trashcan_open.png \

@@ -1,6 +1,7 @@
 body
 {
-	width: 390dp;
+	width: 460dp;
+	min-width: 390dp;
 	height: 540dp;
 	position: absolute;
 	bottom: 0;
@@ -8,16 +9,21 @@ body
 	max-height: 90%;
 }
 
-section
+.device_container
 {
-	display: block;
-	margin-bottom: 10dp;
-	padding-top: 5dp;
+	overflow-x: hidden;
+	overflow-y: auto;
+	/*white-space: nowrap;*/
+	position: absolute;
+	left: 0dp;
+	right: 0dp;
+	top: 60dp;
+	bottom: 0dp;
 }
 
 .toolbar
 {
-	margin-bottom: 8dp;
+	margin: 8dp 0;
 }
 
 table.default tr
@@ -28,39 +34,63 @@ table.default tr
 table.default th
 {
 	padding: 5dp;
-}
-
-table.default th.small
-{
-	padding: 1dp;
-	font-size: 10dp;
-}
-
-table.default th.large
-{
-	font-size: 12dp;
+	white-space: nowrap;
 }
 
 table.default td
 {
 	margin-left: 1dp;
+	white-space: nowrap;
 }
 
-table.default td.small
+.overflow
 {
+	color: #b00600;
+}
+
+.regdump
+{
+	border: 1dp;
+	border-top-color: #000000;
+	border-right-color: #000000;
+	border-left-color: #aaaaaa;
+	border-bottom-color: #aaaaaa;
 	padding: 4dp;
+	background-color: #00000020;
+	margin: 4dp 0 4dp 0;
 	font-size: 10dp;
 }
 
-table.default td.large
+@media (theme: light)
 {
-	padding: 4dp 5dp;
-	font-size: 12dp;
+	.regdump
+	{
+		/*background-color: #ddd;*/
+	}
 }
 
-#vga th
+#cmd_vga_update btnicon,
+#cmd_pit_update btnicon,
+#cmd_pic_update btnicon
 {
-	width: 45dp;
+	decorator: image(icons/debugger/update.png);
+}
+
+.vga_section
+{
+	margin-bottom: 0;
+	margin-top: 8dp;
+}
+
+.vga_section > span
+{
+	font-size: 14dp;
+	margin-left: 8dp;
+}
+
+#vga
+{
+	font-size: 12dp;
 }
 
 #vga td
@@ -73,100 +103,145 @@ table.default td.large
 	text-align: center;
 }
 
-#vga_mode, #vga_screen
+#vga_horizontal td,
+#vga_vertical td
 {
-	width: 260dp;
+	text-align: center;
+	color: #000000;
 }
 
-#vga_vtotal, #vga_vdend, 
-#vga_htotal, #vga_hdend
+#vga td.vga_total
 {
-	width: 30dp;
+	background-color: #ffff00;
 }
 
-#vga_vblank, #vga_vretr, 
-#vga_hblank, #vga_hretr
+#vga td.vga_disp
 {
-	width: 45dp;
+	background-color: #99ff55;
 }
 
-#vga_startaddr_hi, #vga_startaddr_lo
+#vga td.vga_border
 {
-	width: 20dp;
+	background-color: #00ffff;
 }
 
-#vga_startaddr_latch
+#vga td.vga_blank
 {
-	width: 35dp;
+	background-color: #e6e6e6;
 }
 
-#vga_frame_cnt
+#vga td.vga_retr
 {
-	width: 50dp;
+	background-color: #999999;
 }
 
-#vga_scanl, #vga_pix_upd
+
+#vga_hrblank,   
+#vga_px_hrblank,
+#vga_us_hrblank,
+
+#vga_hrstart,
+#vga_hrborder,
+#vga_px_hrstart,
+#vga_px_hrborder,
+#vga_us_hrstart,
+#vga_us_hrborder,
+
+#vga_vrstart,
+#vga_ms_vrstart,
+#vga_vtblank,
+#vga_vbblank,
+#vga_vbborder,
+#vga_ms_vbblank,
+#vga_ms_vbborder
+{
+	border-left: 1dp;
+	border-color: #a6a6a6;
+}
+
+#vga_hlblank,
+#vga_px_hlblank, 
+#vga_us_hlblank, 
+#vga_hbend,
+#vga_px_hbend,
+#vga_us_hbend,
+
+#vga_vtblank,
+#vga_vbend,
+#vga_ms_vtblank,
+#vga_ms_vbend
+{
+	border-left: 2dp;
+	border-color: #0000ff;
+}
+
+
+#vga_hdisp,
+#vga_px_hdisp,
+#vga_us_hdisp,
+#vga_vdisp,
+#vga_ms_vdisp
+{
+	border-left: 2dp;
+	border-color: #ff0000;
+}
+
+#vga_hretr,
+#vga_px_hretr,
+#vga_us_hretr,
+
+#vga_vretr,
+#vga_ms_vretr
+{
+	border-left: 1dp;
+	border-color: #a6a6a6;
+}
+
+#vga_frame_cnt,
+#vga_pix_upd,
+#vga_pal_line,
+#vga_scanl
+{
+	max-width: 70dp;
+}
+
+#vga_upd.led,
+#vga_disp_phase.led,
+#vga_hretr_phase.led,
+#vga_vretr_phase.led
 {
 	width: 40dp;
 }
 
-#vga_disp_phase, #vga_hretr_phase, #vga_vretr_phase
+#vga_stats th
 {
-	width: 40dp;
-}
-
-#vga_upd
-{
-	width: 40dp;
-}
-
-#vga_saddr_line, #vga_pal_line
-{
-	width: 30dp;
-}
-
-#vgastats th
-{
-	width: 70dp;
+	max-width: 70dp;
 }
 
 #pic th
 {
 	width: 50dp;
-	font-size: 10dp;
-	padding: 0;
 }
 
 #pic td
 {
-	width: 15dp;
-	font-size: 9dp;
-	padding: 0;
 	text-align: center;
 }
 
 #pit table
 {
-	max-width: 300dp;
+
 }
 
 #pit th
 {
 	padding: 2dp;
-	font-size: 10dp;
 	margin-left: 1dp;
 }
 
 #pit td
 {
 	padding: 2dp;
-	font-size: 10dp;
 	margin-left: 1dp;
 }
 
-#cmd_vga_update btnicon,
-#cmd_pit_update btnicon,
-#cmd_pic_update btnicon
-{
-	decorator: image(icons/debugger/update.png);
-}

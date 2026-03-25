@@ -624,6 +624,19 @@ void Machine::set_single_step(bool _val)
 	m_cpu_single_step = _val;
 }
 
+void Machine::cmd_pause_imm(bool _show_notice)
+{
+	if(!m_cpu_single_step) {
+		pause();
+		if(_show_notice) {
+			PINFOF(LOG_V0, LOG_MACHINE, "Emulation paused\n");
+			GUI::instance()->show_message("Emulation paused");
+		} else {
+			PDEBUGF(LOG_V0, LOG_MACHINE, "Emulation paused\n");
+		}
+	}
+}
+
 TimerID Machine::register_timer(TimerFn _func, const std::string &_name, unsigned _data)
 {
 	return m_timers.register_timer(_func, _name, _data);
@@ -795,15 +808,7 @@ void Machine::cmd_switch_power()
 void Machine::cmd_pause(bool _show_notice)
 {
 	m_cmd_queue.push([=] () {
-		if(!m_cpu_single_step) {
-			pause();
-			if(_show_notice) {
-				PINFOF(LOG_V0, LOG_MACHINE, "Emulation paused\n");
-				GUI::instance()->show_message("Emulation paused");
-			} else {
-				PDEBUGF(LOG_V0, LOG_MACHINE, "Emulation paused\n");
-			}
-		}
+		cmd_pause_imm(_show_notice);
 	});
 }
 

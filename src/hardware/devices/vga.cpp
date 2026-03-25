@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2001-2013  The Bochs Project
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,6 +32,22 @@
 #include "filesys.h"
 #include <cstring>
 
+/*
+ * The renderer has 2 modes:
+ * a. VGA_RENDER_LINE (per-scanline): used in graphics mode for resolutions lower
+ *    than 640x480, when it's more probable per-scanline effects are used.
+ * b. VGA_RENDER_FRAME (per-frame): for text mode and any APA modes with resolution
+ *    of 640x480 and above, much cheaper to run.
+ *
+ * Sequence of events:
+ * 1. frame_start(), the start of the frame, when the VGA's horizontal and scanline counters are 0
+ * 2. if per-scanline: horizontal_retrace(), the start of the horizontal retrace period,
+ *                     when the scanline is actually rendered. This is a continuous timer
+ *                     with a period equal to Horizontal total.
+ *    if per-frame: frame_end() at the start of the scanline after the last visible one,
+ *                  the whole frame is rendered here.
+ * 3. vertical_retrace() at the start of the vertical retrace period.
+ */
 
 using namespace std::placeholders;
 
@@ -64,7 +80,7 @@ IODEVICE_PORTS(VGA) = {
 
 enum VGATimerFunctionNames {
 	VGA_VERTICAL_RETRACE,
-	VGA_HORIZ_DISP_END,
+	VGA_HORIZONTAL_RETRACE,
 	VGA_FRAME_START,
 	VGA_FRAME_END
 };
@@ -149,7 +165,9 @@ void VGA::config_changed()
 		} catch(std::exception &e) {}
 	}
 	
-	m_bugs.ps_bit = g_program.config().get_bool(VGA_SECTION, VGA_PS_BIT_BUG);
+	m_use_overscan = g_program.config().get_bool_or_default(DISPLAY_SECTION, DISPLAY_OVERSCAN);
+
+	m_bugs.ps_bit = g_program.config().get_bool_or_default(VGA_SECTION, VGA_PS_BIT_BUG);
 }
 
 void VGA::remove()
@@ -271,8 +289,8 @@ void VGA::restore_state(StateBuf &_state)
 		case VGA_VERTICAL_RETRACE:
 			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this,_1), VGA_VERTICAL_RETRACE);
 			break;
-		case VGA_HORIZ_DISP_END:
-			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::horiz_disp_end,this,_1), VGA_HORIZ_DISP_END);
+		case VGA_HORIZONTAL_RETRACE:
+			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::horizontal_retrace,this,_1), VGA_HORIZONTAL_RETRACE);
 			break;
 		case VGA_FRAME_START:
 			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::frame_start,this,_1), VGA_FRAME_START);
@@ -307,9 +325,9 @@ void VGA::restore_state(StateBuf &_state)
 	m_line_data_buf[0].resize(m_s.vmode.imgw);
 	m_line_data_buf[1].resize(m_s.vmode.imgw);
 
-	PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
-	g_machine.set_heartbeat(m_s.timings_ns.vtotal);
-	g_program.set_heartbeat(m_s.timings_ns.vtotal);
+	PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings.ns.vtotal);
+	g_machine.set_heartbeat(m_s.timings.ns.vtotal);
+	g_program.set_heartbeat(m_s.timings.ns.vtotal);
 	
 	m_stats = {};
 	m_cur_upd_pix = 0;
@@ -383,6 +401,10 @@ void VGA::calculate_timings()
 	} else {
 		vrend = vrstart + vrend;
 	}
+	if(vrend >= vtotal) {
+		vrend = vtotal + m_s.CRTC.vretrace_end.VRE;
+	}
+	//vrend++; nope
 
 	if(vbstart != 0) {
 		vbstart += 1;
@@ -398,28 +420,65 @@ void VGA::calculate_timings()
 		//   ET3000 blanks lines 1 to vbend (255/6 lines).
 		//   ET4000 doesn't blank if vbstart == vbend.
 	}
+	if(vbend >= vtotal) {
+		vbend = vtotal + (m_s.CRTC.end_vblank & 0x7f);
+	}
 	vbend++;
+
 
 	// HORIZONTAL TIMINGS
 
-	uint32_t htotal  = (m_s.CRTC.htotal + 5) << m_s.sequencer.clocking.DC;
+	uint32_t htotal  = m_s.CRTC.htotal + 5;
 	uint32_t hdend   = m_s.CRTC.hdisplay_end + 1;
-	uint32_t hbstart = m_s.CRTC.start_hblank;
-	uint32_t hbend   = hbstart + ((m_s.CRTC.latches.end_hblank - hbstart) & 0x3F);
+
 	uint32_t hrstart = m_s.CRTC.start_hretrace;
 	uint32_t hrend   = (m_s.CRTC.end_hretrace.EHR - hrstart) & 0x1F;
-	uint32_t cwidth  = m_s.sequencer.clocking.D89 ? 8 : 9;
 
 	if(hrend == 0) {
 		hrend = hrstart + 0x1f + 1;
 	} else {
 		hrend = hrstart + hrend;
 	}
+	if(hrend >= htotal) {
+		hrend = htotal + m_s.CRTC.end_hretrace.EHR;
+	}
+	//hrend++; nope
+
+	uint32_t hbstart = m_s.CRTC.start_hblank + 1;
+	uint32_t hbend   = (m_s.CRTC.latches.end_hblank - hbstart) & 0x3F;
+
+	if(hbend == 0) {
+		hbend = hbstart + 0x3f + 1;
+	} else {
+		hbend = hbstart + hbend;
+	}
+	if(hbend >= htotal) {
+		hbend = htotal - 1 + m_s.CRTC.latches.end_hblank;
+	}
+	hbend++;
+
 
 	if(htotal == 0 || vtotal == 0) {
 		g_machine.deactivate_timer(m_timer_id);
 		return;
 	}
+
+	m_s.timings.vtotal  = vtotal;
+	m_s.timings.vdend   = vdend;
+	m_s.timings.vbstart = vbstart;
+	m_s.timings.vbend   = vbend;
+	m_s.timings.vrstart = vrstart;
+	m_s.timings.vrend   = vrend;
+
+	m_s.timings.htotal  = htotal;
+	m_s.timings.hdend   = hdend;
+	m_s.timings.hbstart = hbstart;
+	m_s.timings.hbend   = hbend;
+	m_s.timings.hrstart = hrstart;
+	m_s.timings.hrend   = hrend;
+
+	uint32_t cwidth  = m_s.sequencer.clocking.D89 ? 8 : 9;
+	m_s.timings.cwidth  = cwidth;
 
 	// DOT CLOCK FREQUENCIES
 
@@ -434,45 +493,38 @@ void VGA::calculate_timings()
 		break;
 	}
 	m_s.timings.clock = clock;
-	m_s.timings.hfreq = (clock / (htotal * cwidth))/1000.0;
+
+	// Adjust the horizontal frequency if in pixel doubling mode
+	int dc = m_s.sequencer.clocking.DC ? 2 : 1;
+	htotal *= dc;
+
+	m_s.timings.hfreq = (clock / (htotal * cwidth)) / 1000.0;
 	clock /= cwidth;
 
 	// The screen refresh frequency
 	m_s.timings.vfreq = clock / (htotal * vtotal);
 
-	m_s.timings.vtotal  = vtotal;
-	m_s.timings.vdend   = vdend;
-	m_s.timings.vbstart = vbstart;
-	m_s.timings.vbend   = vbend;
-	m_s.timings.vrstart = vrstart;
-	m_s.timings.vrend   = vrend;
-	m_s.timings.htotal  = htotal;
-	m_s.timings.hdend   = hdend;
-	m_s.timings.hbstart = hbstart;
-	m_s.timings.hbend   = hbend;
-	m_s.timings.hrstart = hrstart;
-	m_s.timings.hrend   = hrend;
-	m_s.timings.cwidth  = cwidth;
-	
 	double invclock_ns = 1e9 / clock;
-	m_s.timings_ns.htotal  = htotal * invclock_ns;
-	m_s.timings_ns.hdend   = hdend * invclock_ns;
-	m_s.timings_ns.hbstart = hbstart * invclock_ns;
-	m_s.timings_ns.hbend   = hbend * invclock_ns;
-	m_s.timings_ns.hrstart = hrstart * invclock_ns;
-	m_s.timings_ns.hrend   = hrend * invclock_ns;
+	m_s.timings.ns.htotal  = htotal * invclock_ns;
+	m_s.timings.ns.hdend   = hdend * dc * invclock_ns;
+	m_s.timings.ns.hbstart = hbstart * dc * invclock_ns;
+	m_s.timings.ns.hbend   = hbend * dc * invclock_ns;
+	m_s.timings.ns.hrstart = hrstart * dc * invclock_ns;
+	m_s.timings.ns.hrend   = hrend * dc * invclock_ns;
 
-	m_s.timings_ns.vdend   = m_s.timings_ns.htotal * vdend;
-	m_s.timings_ns.vrstart = m_s.timings_ns.htotal * vrstart;
-	m_s.timings_ns.vrend   = m_s.timings_ns.htotal * vrend;
+	m_s.timings.ns.vdend   = m_s.timings.ns.htotal * vdend;
+	m_s.timings.ns.vbstart = m_s.timings.ns.htotal * vbstart;
+	m_s.timings.ns.vbend   = m_s.timings.ns.htotal * vbend;
+	m_s.timings.ns.vrstart = m_s.timings.ns.htotal * vrstart;
+	m_s.timings.ns.vrend   = m_s.timings.ns.htotal * vrend;
 
 	uint32_t vtotal_ns  = 1e9 / m_s.timings.vfreq;
 	
-	if(m_s.timings_ns.vtotal != vtotal_ns) {
-		m_s.timings_ns.vtotal = vtotal_ns;
-		PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings_ns.vtotal);
-		g_machine.set_heartbeat(m_s.timings_ns.vtotal);
-		g_program.set_heartbeat(m_s.timings_ns.vtotal);
+	if(m_s.timings.ns.vtotal != vtotal_ns) {
+		m_s.timings.ns.vtotal = vtotal_ns;
+		PDEBUGF(LOG_V1, LOG_VGA, "vtotal=%u\n", m_s.timings.ns.vtotal);
+		g_machine.set_heartbeat(m_s.timings.ns.vtotal);
+		g_program.set_heartbeat(m_s.timings.ns.vtotal);
 		
 		m_display->lock();
 		m_display->set_timings(m_s.timings);
@@ -497,6 +549,18 @@ void VGA::update_video_mode()
 	}
 	m_s.vmode.xres = (hdend * m_s.timings.cwidth) << m_s.sequencer.clocking.DC;
 
+	m_s.timings.blank.left = m_s.timings.hbend - m_s.timings.hrend;
+	m_s.timings.overscan.left = m_s.timings.htotal - m_s.timings.hbend;
+	m_s.timings.overscan.right = m_s.timings.hbstart - m_s.timings.hdend;
+	m_s.timings.blank.right = m_s.timings.hrstart - m_s.timings.hbstart;
+	m_s.timings.blank.hretr = m_s.timings.hrend - m_s.timings.hrstart;
+	if(m_s.timings.overscan.left < 0) {
+		m_s.timings.overscan.left = 0;
+	}
+	if(m_s.timings.overscan.right < 0) {
+		m_s.timings.overscan.right = 0;
+	}
+	
 	// Vertical blanking tricks
 	m_s.vmode.yres = m_s.timings.vdend;
 	m_s.timings.vblank_skip = 0;
@@ -511,7 +575,7 @@ void VGA::update_video_mode()
 			// this is used for example in Sid & Al's Incredible Toons
 
 			// blanking wraps to the start of the screen
-			m_s.timings.vblank_skip = m_s.timings.vbend & 0x7f;
+			m_s.timings.vblank_skip = m_s.timings.vbend - m_s.timings.vtotal;
 
 			// on blanking wrap to 0, the first line is not blanked
 			// this is used by the S3 BIOS and other S3 drivers in some SVGA modes
@@ -540,44 +604,27 @@ void VGA::update_video_mode()
 	}
 	m_s.timings.last_vis_sl = m_s.timings.vblank_skip + (m_s.vmode.yres - 1);
 	// careful: last_vis_sl is 0-based
-	m_s.timings_ns.frame_end = (m_s.timings.last_vis_sl * m_s.timings_ns.htotal) + m_s.timings_ns.htotal;
-	
+	m_s.timings.ns.frame_end = (m_s.timings.last_vis_sl * m_s.timings.ns.htotal) + m_s.timings.ns.htotal;
 
-	// BORDERS (TODO)
-
-	uint32_t start = m_s.timings.vbstart;
-	if(m_s.timings.vrstart < m_s.timings.vbstart || m_s.timings.vbstart <= 1) {
-		start = m_s.timings.vrstart;
-	}
-	m_s.vmode.borders.bottom = start - (m_s.timings.vdend-1);
-
-	if(m_s.timings.vbend < m_s.timings.vtotal) {
-		uint32_t end = m_s.timings.vbend;
-		if(m_s.timings.vbend < m_s.timings.vrend) {
-			end = m_s.timings.vrend;
-		}
-		m_s.vmode.borders.top = (m_s.timings.vtotal+1) - end;
+	m_s.timings.blank.top = m_s.timings.vbend - m_s.timings.vrend;
+	m_s.timings.overscan.top = m_s.timings.vtotal - m_s.timings.vbend;
+	if(m_s.timings.vrstart >= m_s.timings.vbstart) {
+		m_s.timings.overscan.bottom = m_s.timings.vbstart - m_s.timings.vdend;
+		m_s.timings.blank.bottom = m_s.timings.vrstart - m_s.timings.vbstart;
 	} else {
-		m_s.vmode.borders.top = 0;
+		m_s.timings.overscan.bottom = m_s.timings.vrstart - m_s.timings.vdend;
+		m_s.timings.blank.bottom = 0;
 	}
-
-	uint32_t end = m_s.timings.hbend;
-	if(m_s.timings.hbend < m_s.timings.hrend) {
-		end = m_s.timings.hrend-1;
+	m_s.timings.blank.vretr = m_s.timings.vrend - m_s.timings.vrstart;
+	if(m_s.timings.overscan.top < 0) {
+		m_s.timings.overscan.top = 0;
 	}
-	m_s.vmode.borders.left = (((m_s.timings.htotal>>m_s.sequencer.clocking.DC)-1) - end) * m_s.timings.cwidth;
-	m_s.vmode.borders.left <<= m_s.sequencer.clocking.DC;
-
-	if(m_s.timings.hbstart >= m_s.timings.hdend) {
-		m_s.vmode.borders.right = (m_s.timings.hbstart - (m_s.timings.hdend-1)) * m_s.timings.cwidth;
-	} else {
-		m_s.vmode.borders.right = 0;
+	if(m_s.timings.overscan.bottom < 0) {
+		m_s.timings.overscan.bottom = 0;
 	}
-	m_s.vmode.borders.right <<= m_s.sequencer.clocking.DC;
-
 
 	// VIDEO MODE
-	
+
 	m_s.vmode.imgw = m_s.vmode.xres;
 	m_s.vmode.imgh = m_s.vmode.yres;
 	if(m_s.gfx_ctrl.misc.GM) {
@@ -662,7 +709,42 @@ void VGA::update_video_mode()
 		m_s.render_mode = VGA_RENDER_FRAME;
 		m_renderer = nullptr;
 	}
+
+	if(m_use_overscan) {
+		m_s.vmode.overscan.left = m_s.timings.overscan.left * m_s.timings.cwidth;
+		m_s.vmode.overscan.right = m_s.timings.overscan.right * m_s.timings.cwidth;
+		m_s.vmode.overscan.top = m_s.timings.overscan.top;
+		m_s.vmode.overscan.bottom = m_s.timings.overscan.bottom;
+		m_s.vmode.overscan.present = true;
 	
+		m_s.vmode.framew = m_s.vmode.overscan.left + m_s.vmode.xres + m_s.vmode.overscan.right;
+		// There are some rarely used modes (eg: mode Q 256x256x256) that need proper blank area 
+		// calculation to keep the correct aspect ratio. Because we only care about overscan border,
+		// to compensate we force a minimum frame width, the display will then keep the image 
+		// ratio while centering it. It's a hack but it's enough for such edge cases.
+		int minw = (m_s.vmode.overscan.left ? 8 : 0) + 640 + (m_s.vmode.overscan.right ? 8 : 0);
+		if(m_s.timings.hfreq < 32.0 && m_s.vmode.framew < minw) {
+			m_s.vmode.framew = minw;
+		}
+		m_s.vmode.frameh = m_s.timings.vblank_skip + 
+				m_s.vmode.overscan.top + m_s.vmode.yres + m_s.vmode.overscan.bottom;
+	} else {
+		m_s.vmode.overscan.left = 0;
+		m_s.vmode.overscan.right = 0;
+		m_s.vmode.overscan.top = 0;
+		m_s.vmode.overscan.bottom = 0;
+		m_s.vmode.overscan.present = false;
+
+		m_s.vmode.framew = m_s.vmode.xres;
+		m_s.vmode.frameh = m_s.vmode.yres;
+	}
+
+	// some sanity checks
+	unsigned height = m_s.vmode.overscan.top + m_s.vmode.yres + m_s.vmode.overscan.bottom;
+	unsigned top_blank = m_s.vmode.frameh - height;
+	assert(m_s.vmode.frameh >= height);
+	assert(top_blank <= m_s.timings.vblank_skip);
+
 	if(!(oldmode == m_s.vmode)) {
 		if(!m_s.sequencer.clocking.SO) {
 			if(m_s.vmode.mode == VGA_M_TEXT) {
@@ -677,12 +759,12 @@ void VGA::update_video_mode()
 					m_s.render_mode==VGA_RENDER_LINE?"scanlines":"frame");
 			}
 		}
-		
+
 		reset_tiles();
 		m_display->lock();
-		m_display->set_mode(m_s.vmode);
+		m_display->set_mode(m_s.vmode, m_s.timings);
 		m_display->unlock();
-		
+
 		m_line_data_buf[0].resize(m_s.vmode.imgw);
 		m_line_data_buf[1].resize(m_s.vmode.imgw);
 	}
@@ -691,10 +773,10 @@ void VGA::update_video_mode()
 double VGA::current_scanline()
 {
 	double scanline = 0.0;
-	if(m_s.frame_start_time_nsec && m_s.timings_ns.htotal != 0) {
+	if(m_s.frame_start_time_nsec && m_s.timings.ns.htotal != 0) {
 		uint64_t display_ns = (g_machine.get_virt_time_ns() - m_s.frame_start_time_nsec)
-				% m_s.timings_ns.vtotal;
-		scanline = double(display_ns) / m_s.timings_ns.htotal;
+				% m_s.timings.ns.vtotal;
+		scanline = double(display_ns) / m_s.timings.ns.htotal;
 	}
 	return scanline;
 }
@@ -705,29 +787,29 @@ double VGA::current_scanline(bool &disp_, bool &hretr_, bool &vretr_)
 
 	uint64_t display_ns = 0;
 	if(m_s.frame_start_time_nsec) {
-		display_ns = (now - m_s.frame_start_time_nsec) % m_s.timings_ns.vtotal;
+		display_ns = (now - m_s.frame_start_time_nsec) % m_s.timings.ns.vtotal;
 	}
 
 	double scanline = 0.0;
 	uint64_t line_ns = 0;
-	if(m_s.timings_ns.htotal != 0) {
-		scanline = double(display_ns) / m_s.timings_ns.htotal;
-		line_ns = display_ns % m_s.timings_ns.htotal;
+	if(m_s.timings.ns.htotal != 0) {
+		scanline = double(display_ns) / m_s.timings.ns.htotal;
+		line_ns = display_ns % m_s.timings.ns.htotal;
 	}
 
-	if(display_ns >= m_s.timings_ns.frame_end ||
-	  (line_ns >= m_s.timings_ns.hbstart && line_ns <= m_s.timings_ns.hbend)) {
+	if(display_ns >= m_s.timings.ns.frame_end ||
+	  (line_ns >= m_s.timings.ns.hbstart && line_ns <= m_s.timings.ns.hbend)) {
 		disp_ = false;
 	} else {
 		disp_ = true;
 	}
 
 	hretr_ = false;
-	if(display_ns >= m_s.timings_ns.vrstart && display_ns <= m_s.timings_ns.vrend) {
+	if(display_ns >= m_s.timings.ns.vrstart && display_ns <= m_s.timings.ns.vrend) {
 		vretr_ = true;
 	} else {
 		vretr_ = false;
-		if(line_ns >= m_s.timings_ns.hrstart && line_ns <= m_s.timings_ns.hrend) {
+		if(line_ns >= m_s.timings.ns.hrstart && line_ns <= m_s.timings.ns.hrend) {
 			hretr_ = true;
 		}
 	}
@@ -1016,6 +1098,13 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 							}
 							if(m_s.attr_ctrl.attr_mode.PS != (_value&ATTC_PS)) {
 								needs_redraw = true;
+							}
+							break;
+						}
+						case ATTC_OVERSCAN: {
+							if(m_use_overscan) {
+								m_display->set_overscan_color(_value);
+								m_s.force_redraw_overs = 2;
 							}
 							break;
 						}
@@ -1455,8 +1544,12 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 		m_display->gfx_screen_line_update(fb_y, line_data_, 
 			&m_tile_dirty[uint32_t(fb_y*m_num_x_tiles)], m_num_x_tiles);
 	}
+	unsigned ovsc_pixels = 0;
+	if(m_s.force_redraw_overs) {
+		ovsc_pixels = m_display->overscan_screen_line_update(fb_y);
+	}
 	
-	return tiles_updated * VGA_X_TILESIZE;
+	return tiles_updated * VGA_X_TILESIZE + ovsc_pixels;
 }
 
 unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
@@ -1510,8 +1603,13 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::v
 	
 	m_display->gfx_screen_line_update(fb_y, line_data_, 
 			&m_tile_dirty[uint32_t(fb_y*m_num_x_tiles)], m_num_x_tiles);
-	
-	return tiles_updated * VGA_X_TILESIZE;
+
+	unsigned ovsc_pixels = 0;
+	if(m_s.force_redraw_overs) {
+		ovsc_pixels = m_display->overscan_screen_line_update(fb_y);
+	}
+
+	return tiles_updated * VGA_X_TILESIZE + ovsc_pixels;
 }
 
 unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
@@ -1584,8 +1682,13 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 	
 	m_display->gfx_screen_line_update(fb_y, line_data_,
 			&m_tile_dirty[uint32_t(fb_y*m_num_x_tiles)], m_num_x_tiles);
-	
-	return tiles_updated * VGA_X_TILESIZE;
+
+	unsigned ovsc_pixels = 0;
+	if(m_s.force_redraw_overs) {
+		ovsc_pixels = m_display->overscan_screen_line_update(fb_y);
+	}
+
+	return tiles_updated * VGA_X_TILESIZE + ovsc_pixels;
 }
 
 unsigned VGA::gfx_update_thread(int _thread_id, uint16_t _thread_lc)
@@ -1684,27 +1787,43 @@ void VGA::text_update()
 		// screen updated, copy new video memory contents into text snapshot
 		memcpy(m_s.text_snapshot, &m_memory[tm_info.start_address], uint32_t(tm_info.line_offset*m_s.vmode.textrows));
 	}
+
+	if(m_s.force_redraw_overs) {
+		m_display->overscan_screen_update(VGADisplay::OverscanBorder::left);
+		m_display->overscan_screen_update(VGADisplay::OverscanBorder::right);
+	}
 }
 
-void VGA::horiz_disp_end(uint64_t _time)
+void VGA::horizontal_retrace(uint64_t _time)
 {
-	// this is horizontal display end
+	// this is horizontal retrace start
 	// called only during per-line rendering in gfx mode
-	
+
 	UNUSED(_time);
-	
+
+	if(m_dbg_scanl_step) {
+		g_machine.cmd_pause_imm(false);
+		m_dbg_scanl_step = false;
+	}
+
 	m_display->lock();
-	
+
 	// skip top blank area
 	if(m_renderer && m_s.scanline >= m_s.timings.vblank_skip) {
+
+		uint32_t updated_pix = m_cur_upd_pix;
+
+		// THE SCANLINE RENDERING:
+		// data copy to display happens in the renderer
 		m_cur_upd_pix += (this->*m_renderer)(m_s.scanline, m_s.mem_addr_counter, m_line_data_buf[0]);
-		if(g_machine.cycles_factor() < 1.0 || g_machine.is_paused()) {
+
+		if(m_cur_upd_pix > updated_pix && (g_machine.cycles_factor() < 1.0 || g_machine.is_paused())) {
 			m_display->set_fb_updated();
 		}
 	}
-	
+
 	m_s.scanline++;
-	
+
 	if(m_s.scanline == m_s.CRTC.latches.line_compare) {
 		m_s.mem_addr_counter = 0;
 	} else {
@@ -1727,11 +1846,11 @@ void VGA::horiz_disp_end(uint64_t _time)
 		m_stats.updated_pix = m_cur_upd_pix;
 		
 		// the distance to the next scan line is (current time + hborders + hblanking + hretracing)
-		// the start of the next scan line is equivalent to m_s.timings_ns.last_vis_sl;
+		// the start of the next scan line is equivalent to m_s.timings.ns.last_vis_sl;
 		uint32_t frame_start_dist = g_machine.get_virt_time_ns() - m_s.frame_start_time_nsec;
 		uint32_t vretr_dist = 10_us;
-		if(m_s.timings_ns.vrstart > frame_start_dist) {
-			vretr_dist = m_s.timings_ns.vrstart - frame_start_dist;
+		if(m_s.timings.ns.vrstart > frame_start_dist) {
+			vretr_dist = m_s.timings.ns.vrstart - frame_start_dist;
 		}
 		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this,_1), VGA_VERTICAL_RETRACE);
 		g_machine.activate_timer(m_timer_id, vretr_dist, false);
@@ -1775,17 +1894,17 @@ void VGA::frame_start(uint64_t _time)
 			// enable per-line rendering, 1 update for every line at hdend
 			m_s.scanline = 0;
 			m_s.mem_addr_counter = m_s.CRTC.latches.start_address;
-			
-			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::horiz_disp_end,this,_1), VGA_HORIZ_DISP_END);
-			g_machine.activate_timer(m_timer_id, m_s.timings_ns.hdend, m_s.timings_ns.htotal, true);
+
+			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::horizontal_retrace,this,_1), VGA_HORIZONTAL_RETRACE);
+			g_machine.activate_timer(m_timer_id, m_s.timings.ns.hrstart, m_s.timings.ns.htotal, true);
 		} else {
 			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this,_1), VGA_VERTICAL_RETRACE);
-			g_machine.activate_timer(m_timer_id, m_s.timings_ns.vrstart, false);
+			g_machine.activate_timer(m_timer_id, m_s.timings.ns.vrstart, false);
 		}
 	} else {
 		// enable per-frame rendering
 		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::frame_end,this,_1), VGA_FRAME_END);
-		g_machine.activate_timer(m_timer_id, m_s.timings_ns.frame_end, false);
+		g_machine.activate_timer(m_timer_id, m_s.timings.ns.frame_end, false);
 	}
 }
 
@@ -1832,8 +1951,8 @@ void VGA::frame_end(uint64_t _time)
 	}
 	
 	uint64_t dist = 10_us;
-	if(m_s.timings_ns.vrstart > m_s.timings_ns.frame_end) {
-		dist = m_s.timings_ns.vrstart - m_s.timings_ns.frame_end;
+	if(m_s.timings.ns.vrstart > m_s.timings.ns.frame_end) {
+		dist = m_s.timings.ns.vrstart - m_s.timings.ns.frame_end;
 	}
 	
 	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this,_1), VGA_VERTICAL_RETRACE);
@@ -1843,14 +1962,30 @@ void VGA::frame_end(uint64_t _time)
 void VGA::vertical_retrace(uint64_t _time)
 {
 	// this is vertical retrace start
-	
+	// used by per-scanline and per-frame rendering
+
 	UNUSED(_time);
-	
+
 	PDEBUGF(LOG_V2, LOG_VGA, "vertical retrace\n");
-	
-	// we can notify the GUI after frame rending is complete or simply at vretrace 
+
+	if(m_dbg_frame_step) {
+		g_machine.cmd_pause_imm(false);
+		m_dbg_frame_step = false;
+	}
+
+	if(!is_video_disabled() && m_s.force_redraw_overs > 0) {
+		unsigned upd_pix = 0;
+		m_display->lock();
+		upd_pix += m_display->overscan_screen_update(VGADisplay::OverscanBorder::top);
+		upd_pix += m_display->overscan_screen_update(VGADisplay::OverscanBorder::bottom);
+		m_display->unlock();
+		m_stats.updated_pix += upd_pix;
+		m_s.force_redraw_overs--;
+	}
+
+	// we can notify the GUI after frame rendering is complete or simply at vretrace 
 	m_display->notify_interface();
-	
+
 	static uint64_t mch_last_frame_count = 0;
 	if(g_machine.get_bench().tot_frame_count != mch_last_frame_count+1) {
 		PDEBUGF(LOG_V1, LOG_VGA, "frames desync: %llu machine beats per VGA frame\n", 
@@ -1881,8 +2016,8 @@ void VGA::vertical_retrace(uint64_t _time)
 	}
 	
 	uint64_t dist = 10_us;
-	if(m_s.timings_ns.vtotal > m_s.timings_ns.vrstart) {
-		dist = m_s.timings_ns.vtotal - m_s.timings_ns.vrstart;
+	if(m_s.timings.ns.vtotal > m_s.timings.ns.vrstart) {
+		dist = m_s.timings.ns.vtotal - m_s.timings.ns.vrstart;
 	}
 	
 	g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::frame_start,this,_1), VGA_FRAME_START);
@@ -2135,7 +2270,7 @@ void VGA::state_to_textfile(std::string _filepath)
 
 	fprintf(file.get(),
 		"mode = %ux%u %s\n"
-		"screen = %ux%u\n"
+		"screen = %ux%u (%ux%u)\n"
 		"  horiz total = %u chars\n"
 		"  horiz disp end = char %u\n"
 		"  horiz blank start = char %u\n"
@@ -2143,21 +2278,19 @@ void VGA::state_to_textfile(std::string _filepath)
 		"  horiz retr start = char %u\n"
 		"  horiz retr end = char %u\n"
 		"  horiz freq = %.2f kHz\n"
-		"  horiz borders = left:%u right:%u\n"
 		"  vert total = %u lines\n"
 		"  vert display end = line %u\n"
 		"  vert blank start = line %u\n"
 		"  vert blank end = line %u\n"
-		"  vert blank skip = %u lines\n"
 		"  vert retrace start = line %u\n"
 		"  vert retrace end = line %u\n"
 		"  vert freq = %.2f Hz\n"
-		"  vert borders = top:%u bottom:%u\n"
+		"  vert blank skip = %u lines\n"
 		"\n",
 
 		m_s.vmode.imgw, m_s.vmode.imgh,
 		current_mode_string(),
-		m_s.vmode.xres, m_s.vmode.yres,
+		m_s.vmode.xres, m_s.vmode.yres, m_s.vmode.framew, m_s.vmode.frameh,
 
 		m_s.timings.htotal,
 		m_s.timings.hdend,
@@ -2166,50 +2299,46 @@ void VGA::state_to_textfile(std::string _filepath)
 		m_s.timings.hrstart,
 		m_s.timings.hrend,
 		m_s.timings.hfreq,
-		m_s.vmode.borders.left, m_s.vmode.borders.right,
 
 		m_s.timings.vtotal,
 		m_s.timings.vdend,
 		m_s.timings.vbstart,
 		m_s.timings.vbend,
-		m_s.timings.vblank_skip,
 		m_s.timings.vrstart,
 		m_s.timings.vrend,
 		m_s.timings.vfreq,
-		m_s.vmode.borders.top, m_s.vmode.borders.bottom
+		
+		m_s.timings.vblank_skip
 	);
 
-	fprintf(file.get(), "Timings (nsec)\n");
-	fprintf(file.get(), "%*u  Horizontal Total\n",          8, m_s.timings_ns.htotal);
-	fprintf(file.get(), "%*u  Horizontal Blank Start\n",    8, m_s.timings_ns.hbstart);
-	fprintf(file.get(), "%*u  Horizontal Blank End\n",      8, m_s.timings_ns.hbend);
-	fprintf(file.get(), "%*u  Horizontal Retrace Start\n",  8, m_s.timings_ns.hrstart);
-	fprintf(file.get(), "%*u  Horizontal Retrace End\n",    8, m_s.timings_ns.hrend);
-	fprintf(file.get(), "%*u  Vertical Total\n",            8, m_s.timings_ns.vtotal);
-	fprintf(file.get(), "%*u  Vertical Display End\n",      8, m_s.timings_ns.vdend);
-	fprintf(file.get(), "%*u  Vertical Retrace Start\n",    8, m_s.timings_ns.vrstart);
-	fprintf(file.get(), "%*u  Vertical Retrace End\n",      8, m_s.timings_ns.vrend);
-	fprintf(file.get(), "%*u  Frame end\n",                 8, m_s.timings_ns.frame_end);
 
 	fprintf(file.get(), "\nGeneral registers\n");
-	m_s.gen_regs.registers_to_textfile(file.get());
+	auto gen_registers = m_s.gen_regs.registers_to_string();
+	fwrite(gen_registers.data(), gen_registers.length(), 1, file.get());
 
 	fprintf(file.get(), "\nSequencer\n");
-	m_s.sequencer.registers_to_textfile(file.get());
+	auto seq_registers = m_s.sequencer.registers_to_string();
+	fwrite(seq_registers.data(), seq_registers.length(), 1, file.get());
 
 	fprintf(file.get(), "\nCRT Controller\n");
-	m_s.CRTC.registers_to_textfile(file.get());
-	fprintf(file.get(), "        Latches\n");
-	fprintf(file.get(), "0x%04X %*u Line Offset (10-bit)\n", m_s.CRTC.latches.line_offset, 5, m_s.CRTC.latches.line_offset);
-	fprintf(file.get(), "0x%04X %*u Line Compare target (10-bit)\n", m_s.CRTC.latches.line_compare, 5, m_s.CRTC.latches.line_compare);
-	fprintf(file.get(), "0x%04X %*u Vertical Retrace Start (10-bit)\n", m_s.CRTC.latches.vretrace_start, 5, m_s.CRTC.latches.vretrace_start);
-	fprintf(file.get(), "0x%04X %*u Vertical Display Enable End (10-bit)\n", m_s.CRTC.latches.vdisplay_end, 5, m_s.CRTC.latches.vdisplay_end);
-	fprintf(file.get(), "0x%04X %*u Vertical Total (10-bit)\n", m_s.CRTC.latches.vtotal, 5, m_s.CRTC.latches.vtotal);
-	fprintf(file.get(), "0x%04X %*u End Horizontal Blanking (6-bit)\n", m_s.CRTC.latches.end_hblank, 5, m_s.CRTC.latches.end_hblank);
-	fprintf(file.get(), "0x%04X %*u Start Vertical Blanking (10-bit)\n", m_s.CRTC.latches.start_vblank, 5, m_s.CRTC.latches.start_vblank);
-	fprintf(file.get(), "0x%04X %*u Start Address (16-bit) \n", m_s.CRTC.latches.start_address, 5, m_s.CRTC.latches.start_address);
-	fprintf(file.get(), "0x%04X %*u Cursor Location (16-bit)\n", m_s.CRTC.latches.cursor_location, 5, m_s.CRTC.latches.cursor_location);
+	auto crtc_registers = m_s.CRTC.registers_to_string();
+	fwrite(crtc_registers.data(), crtc_registers.length(), 1, file.get());
+	fprintf(file.get(), "        Latched values\n");
+	auto latches = m_s.CRTC.latches_to_string();
+	fwrite(latches.data(), latches.length(), 1, file.get());
 
+	fprintf(file.get(), "        Timings (nsec)\n");
+	fprintf(file.get(), "%*u  Horizontal Total\n",          8, m_s.timings.ns.htotal);
+	fprintf(file.get(), "%*u  Horizontal Blanking Start\n", 8, m_s.timings.ns.hbstart);
+	fprintf(file.get(), "%*u  Horizontal Blanking End\n",   8, m_s.timings.ns.hbend);
+	fprintf(file.get(), "%*u  Horizontal Retrace Start\n",  8, m_s.timings.ns.hrstart);
+	fprintf(file.get(), "%*u  Horizontal Retrace End\n",    8, m_s.timings.ns.hrend);
+	fprintf(file.get(), "%*u  Vertical Total\n",            8, m_s.timings.ns.vtotal);
+	fprintf(file.get(), "%*u  Vertical Display End\n",      8, m_s.timings.ns.vdend);
+	fprintf(file.get(), "%*u  Vertical Retrace Start\n",    8, m_s.timings.ns.vrstart);
+	fprintf(file.get(), "%*u  Vertical Retrace End\n",      8, m_s.timings.ns.vrend);
+	fprintf(file.get(), "%*u  Frame end\n",                 8, m_s.timings.ns.frame_end);
+	
 	fprintf(file.get(), "\nGraphics Controller\n");
 	m_s.gfx_ctrl.registers_to_textfile(file.get());
 

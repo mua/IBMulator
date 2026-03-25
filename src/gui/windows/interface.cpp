@@ -1399,8 +1399,8 @@ void Interface::save_framebuffer(std::string _screenfile, std::string _palfile)
 {
 	SDL_Surface * surface = SDL_CreateRGBSurface(
 		0,
-		m_screen->display()->mode().xres,
-		m_screen->display()->mode().yres,
+		m_screen->display()->mode().framew,
+		m_screen->display()->mode().frameh,
 		32,
 		PALETTE_RMASK,
 		PALETTE_GMASK,
@@ -1469,8 +1469,8 @@ SDL_Surface * Interface::copy_framebuffer()
 	m_screen->display()->lock();
 	SDL_Surface * surface = SDL_CreateRGBSurface(
 		0,
-		m_screen->display()->mode().xres,
-		m_screen->display()->mode().yres,
+		m_screen->display()->mode().framew,
+		m_screen->display()->mode().frameh,
 		32,
 		PALETTE_RMASK,
 		PALETTE_GMASK,

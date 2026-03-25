@@ -8,6 +8,8 @@ body
 	min-height: 128dp;
 	color: white;
 	background-color: #3C5464ff;
+	border: 2dp;
+	border-color: #28374d;
 }
 
 @media (theme: light)
@@ -16,6 +18,7 @@ body
 	{
 		color: black;
 		background-color: #fafafaff;
+		border-color: #b8b8b8;
 	}
 }
 
@@ -34,8 +37,6 @@ body:focus
 
 body.modal
 {
-	border: 2dp;
-	border-color: #28374d;
 	background-color: #3C5464ff;
 }
 
@@ -43,7 +44,6 @@ body.modal
 {
 	body.modal
 	{
-		border-color: #b8b8b8;
 		background-color: #fafafaff;
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -33,20 +33,59 @@ private:
 
 	struct {
 		bool is_running;
+		Rml::Element *panel;
 		Rml::Element *btn_update;
 		Rml::Element *mode, *screen;
-		// CRTC
-		Rml::Element *htotal, *hdend, *hblank, *hretr;
-		Rml::Element *vtotal, *vdend, *vblank, *vretr;
-		Rml::Element *startaddr_hi, *startaddr_lo, *startaddr_latch;
-		Rml::Element *scanl, *disp_phase, *hretr_phase, *vretr_phase;
-		// Stats
-		Rml::Element *frame_cnt;
-		Rml::Element *pix_upd, *upd, *saddr_line, *pal_line;
+
+		struct {
+			bool is_visible;
+			Rml::Element *frame_cnt;
+			Rml::Element *pix_upd, *upd, *saddr_line, *pal_line;
+			Rml::Element *scanl, *disp_phase, *hretr_phase, *vretr_phase;
+		} stats;
+
+		struct {
+			bool is_visible;
+			Rml::Element *clock, *polarity, *registers;
+		} gen;
+
+		struct {
+			bool is_visible;
+			Rml::Element *cwidth, *dotclock, *registers;
+		} seq;
+
+		struct {
+			bool is_visible;
+			Rml::Element *msl, *dsc, *scanlimgl;
+			struct {
+				Rml::Element *total, *lblank, *lborder, *disp, *rborder, *rblank, *retr;
+				Rml::Element *bend, *bstart, *rstart, *rend;
+				struct {
+					Rml::Element *total, *lblank, *lborder, *disp, *rborder, *rblank, *retr;
+					Rml::Element *bend, *bstart, *rstart, *rend;
+				} px;
+				struct {
+					Rml::Element *total, *lblank, *lborder, *disp, *rborder, *rblank, *retr;
+					Rml::Element *bend, *bstart, *rstart, *rend;
+				} us;
+			} h;
+			struct {
+				Rml::Element *total, *tblank, *tborder, *disp, *bborder, *bblank, *retr;
+				Rml::Element *bend, *bstart, *rstart, *rend;
+				struct {
+					Rml::Element *total, *tblank, *tborder, *disp, *bborder, *bblank, *retr;
+					Rml::Element *bend, *bstart, *rstart, *rend;
+				} ms;
+				Rml::Element *vblank_skip, *last_vis_sl;
+			} v;
+			Rml::Element *registers, *latches;
+		} crtc;
+
 	} m_vga = {};
 	
 	struct {
 		bool is_running;
+		Rml::Element *panel;
 		Rml::Element *btn_update;
 		Rml::Element *irq_e[16], *irr_e[16], *imr_e[16], *isr_e[16];
 		uint16_t irq, irr, imr, isr;
@@ -54,6 +93,7 @@ private:
 
 	struct {
 		bool is_running;
+		Rml::Element *panel;
 		Rml::Element *btn_update;
 		Rml::Element *mode[3], *cnt[3], *gate[3], *out[3], *in[3];
 	} m_pit = {};
@@ -63,13 +103,19 @@ private:
 	void on_cmd_vga_update(Rml::Event &);
 	void on_cmd_vga_dump_state(Rml::Event &);
 	void on_cmd_vga_screenshot(Rml::Event &);
+	void on_cmd_vga_skip_scanl(Rml::Event &);
+	void on_cmd_vga_skip_frame(Rml::Event &);
+	void on_cmd_vga_genreg_show(Rml::Event &);
+	void on_cmd_vga_seq_show(Rml::Event &);
+	void on_cmd_vga_crtc_show(Rml::Event &);
+	void on_cmd_vga_stats_show(Rml::Event &);
 	void on_cmd_pit_update(Rml::Event &);
 	void on_cmd_pic_update(Rml::Event &);
 	void update_pit();
 	void update_pit(unsigned cnt);
 	void update_pic();
 	void update_pic(uint16_t _irq, uint16_t _irr, uint16_t _imr, uint16_t _isr, uint _irqn);
-	void update_vga();
+	void update_vga(bool _force = false);
 
 public:
 	DevStatus(GUI * _gui, Rml::Element *_button, Machine *_machine);

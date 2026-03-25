@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023  Marco Bortolin
+ * Copyright (C) 2019-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -316,15 +316,15 @@ void ScreenRenderer_OpenGL::store_screen_params(const ScreenRenderer::Params &_s
 
 void ScreenRenderer_OpenGL::store_vga_framebuffer(FrameBuffer &_fb, const VideoModeInfo &_mode)
 {
-	assert(unsigned(_mode.xres * _mode.yres) <= _fb.size());
+	assert(unsigned(_mode.framew * _mode.frameh) <= _fb.size());
 	assert(_fb.width() == m_fb_width);
 
 	const GLenum fb_format = GL_RGBA;
 	const GLenum fb_type = GL_UNSIGNED_INT_8_8_8_8_REV;
 
-	if(m_vga.input_size == ShaderPreset::CRTC) {
-		m_vga.update_original(_mode.xres, _mode.yres, fb_format, fb_type, m_fb_width, &_fb[0]);
-		m_crt.update_original(_mode.xres, _mode.yres, fb_format, fb_type, m_fb_width, &_fb[0]);
+	if(m_vga.input_size == ShaderPreset::CRTC || _mode.overscan.present) {
+		m_vga.update_original(_mode.framew, _mode.frameh, fb_format, fb_type, m_fb_width, &_fb[0]);
+		m_crt.update_original(_mode.framew, _mode.frameh, fb_format, fb_type, m_fb_width, &_fb[0]);
 	} else {
 		if(_mode.ndots > 1) {
 			int x=0,y=0;

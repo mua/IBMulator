@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2001-2012  The Bochs Project
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -62,28 +62,34 @@ enum VGARenderMode {
 struct VideoModeInfo
 {
 	VGAModes mode;
-	uint16_t xres;
-	uint16_t yres;
-	uint16_t cwidth;
-	uint16_t cheight;
-	uint16_t imgw;
-	uint16_t imgh;
-	uint16_t textcols;
-	uint16_t textrows;
-	uint16_t nscans;
-	uint16_t ndots;
+	uint16_t framew;   // screen frame width in dots (incl. overscan)
+	uint16_t frameh;   // screen frame height in lines (incl. overscan)
+	uint16_t xres;     // screen image x resolution (excl. overscan)
+	uint16_t yres;     // screen image y resolution (excl. overscan)
+	uint16_t imgw;     // video memory image width in dots
+	uint16_t imgh;     // video memory image height in lines
+	uint16_t nscans;   // scanlines per v.mem image line
+	uint16_t ndots;    // dots per v.mem image dot
+	uint16_t cwidth;   // character width in dots
+	uint16_t cheight;  // character height in lines
+	uint16_t textcols; // memory image width in characters (text modes only)
+	uint16_t textrows; // memory image height in characters (text modes only)
 	struct {
-		uint8_t top, bottom, left, right;
-	} borders;
-	
+		uint16_t left, right; // width of left and right borders in dots
+		uint16_t top, bottom; // height of top and bottom borders in lines
+		bool present;         // are ovescan values valid?
+	} overscan;
+
 	inline bool operator==(const VideoModeInfo &_rhs) const {
 		return (mode==_rhs.mode &&
+				framew==_rhs.framew &&
+				frameh==_rhs.frameh &&
 				xres==_rhs.xres &&
 				yres==_rhs.yres &&
-				cwidth==_rhs.cwidth &&
-				cheight==_rhs.cheight &&
 				imgw==_rhs.imgw &&
 				imgh==_rhs.imgh &&
+				cwidth==_rhs.cwidth &&
+				cheight==_rhs.cheight &&
 				textcols==_rhs.textcols &&
 				textrows==_rhs.textrows &&
 				nscans==_rhs.nscans &&
@@ -108,6 +114,26 @@ struct VideoTimings
 	double   clock;          // pixel clock
 	double   hfreq;          // h frequency (kHz)
 	double   vfreq;          // v frequency (Hz)
+	// derived values:
+	struct {
+		uint32_t htotal;         // Horizontal total (how long a line takes, including blank and retrace)
+		uint32_t hdend;
+		uint32_t hbstart, hbend; // Start / End of horizontal blanking
+		uint32_t hrstart, hrend; // Start / End of horizontal retrace
+		uint32_t vtotal;         // Vertical total (including blank and retrace)
+		uint32_t vdend;          // Vertical display end
+		uint32_t vbstart, vbend; // Start / End of vertical blanking period
+		uint32_t vrstart, vrend; // Start / End of vertical retrace pulse
+		uint32_t frame_end;      // Time distance from frame start of the end of the last visible scanline
+	} ns;
+	struct {
+		int left, right, hretr; // in chars
+		int top, bottom, vretr; // in lines
+	} blank;
+	struct {
+		int left, right; // in chars
+		int top, bottom; // in lines
+	} overscan;
 };
 
 // Values not used for emulation, only for debugging purposes.
@@ -167,11 +193,11 @@ protected:
 		VGA_AttrCtrl  attr_ctrl;
 		VGA_DAC       dac;
 
-		bool needs_update;      // 1=screen needs to be updated (per-frame rendering)
+		bool needs_update;      // true=screen needs to be redrawn (per-frame rendering only)
 		unsigned force_redraw;  // buffer needs to be redrawn for this number of frames (per-line rendering)
+		unsigned force_redraw_overs; // overscan areas need to be redrawn for this number of frames
 		int16_t scanline;       // scanline counter (per-line rendering)
 		uint16_t mem_addr_counter;
-		//uint32_t scanline_addr; // scanline mem address (per-line rendering)
 		VGARenderMode render_mode;
 		// blinking support (text cursor and monochrome gfx)
 		unsigned blink_counter;
@@ -183,16 +209,6 @@ protected:
 		// timings
 		uint64_t frame_start_time_nsec; // Time of the last frame start event
 		VideoTimings timings;
-		struct {
-			uint32_t htotal;         // Horizontal total (how long a line takes, including blank and retrace)
-			uint32_t hdend;
-			uint32_t hbstart, hbend; // Start and End of horizontal blanking
-			uint32_t hrstart, hrend; // Start and End of horizontal retrace
-			uint32_t vtotal;         // Vertical total (including blank and retrace)
-			uint32_t vdend;          // Vertical display end
-			uint32_t vrstart, vrend; // Start and End of vertical retrace pulse
-			uint32_t frame_end;      // Time of end of the last visible scan line
-		} timings_ns;
 		// current mode
 		VideoModeInfo vmode;
 		// shift values for VBE (TODO)
@@ -225,7 +241,12 @@ protected:
 		bool ps_bit = false;
 	} m_bugs;
 
-	std::atomic<bool> m_force_redraw;
+	std::atomic<bool> m_force_redraw = false;
+
+	std::atomic<bool> m_dbg_scanl_step = false;
+	std::atomic<bool> m_dbg_frame_step = false;
+
+	bool m_use_overscan = false;
 
 public:
 	VGA(Devices *_dev);
@@ -248,9 +269,11 @@ public:
 	virtual void state_to_textfile(std::string _filepath);
 	inline const VideoModeInfo & video_mode() const { return m_s.vmode; }
 	inline const VideoTimings & timings() const { return m_s.timings; }
-	
-	inline const VGA_CRTC & crtc() const { return m_s.CRTC; }
-	
+
+	const VGA_GenRegs & gen_regs() const { return m_s.gen_regs; }
+	const VGA_Sequencer & sequencer() const { return m_s.sequencer; }
+	const VGA_CRTC & crtc() const { return m_s.CRTC; }
+
 	double current_scanline();
 	double current_scanline(bool &disp_, bool &hretr_, bool &vretr_);
 	
@@ -259,6 +282,9 @@ public:
 	void print_text(std::vector<uint16_t> _text);
 	
 	void force_redraw() { m_force_redraw = true; }
+	
+	void dbg_scanl_step() { m_dbg_scanl_step = true; }
+	void dbg_frame_step() { m_dbg_frame_step = true; }
 
 protected:
 	virtual void update_mem_mapping();
@@ -268,7 +294,7 @@ protected:
 	void init_systemtimer();
 	void update_video_mode();
 	
-	void horiz_disp_end(uint64_t _time);
+	void horizontal_retrace(uint64_t _time);
 	void frame_start(uint64_t _time);
 	void frame_end(uint64_t _time);
 	void vertical_retrace(uint64_t _time);

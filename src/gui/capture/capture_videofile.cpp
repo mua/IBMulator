@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2023  Marco Bortolin
+ * Copyright (C) 2020-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -83,8 +83,8 @@ std::string CaptureVideoFile::open(std::string _dir_path)
 
 void CaptureVideoFile::open_AVI(const VideoFrame &_vf)
 {
-	m_avi_options.video_width = _vf.mode.xres;
-	m_avi_options.video_height = _vf.mode.yres;
+	m_avi_options.video_width = _vf.mode.framew;
+	m_avi_options.video_height = _vf.mode.frameh;
 	
 	m_avi_options.video_rate = uint32_t(_vf.timings.clock / _vf.timings.cwidth);
 	m_avi_options.video_scale = _vf.timings.htotal * _vf.timings.vtotal;
@@ -101,7 +101,7 @@ void CaptureVideoFile::open_AVI(const VideoFrame &_vf)
 	}
 	
 	PINFOF(LOG_V0, LOG_GUI, "Video: %dx%d, %.02f Hz, %s, %s\n",
-			_vf.mode.xres, _vf.mode.yres, _vf.timings.vfreq,
+			_vf.mode.framew, _vf.mode.frameh, _vf.timings.vfreq,
 			m_avi.video_encoder()->name(), m_avi.video_encoder()->format_string().c_str()
 			);
 	PINFOF(LOG_V0, LOG_GUI, "Audio: 16-bit, %d ch., %d Hz, Uncompressed PCM\n",
@@ -147,8 +147,8 @@ void CaptureVideoFile::push_video_frame(const VideoFrame &_vf)
 	} else {
 		bool mode_changed = (
 			_vf.timings.vfreq != m_cur_timings.vfreq || // this float comparison is ok
-			_vf.mode.xres != m_cur_mode.xres ||
-			_vf.mode.yres != m_cur_mode.yres
+			_vf.mode.framew != m_cur_mode.framew ||
+			_vf.mode.frameh != m_cur_mode.frameh
 		);
 		bool size_limit = m_avi.write_size_limit_reached();
 		if(mode_changed || size_limit) {

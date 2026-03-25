@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -184,7 +184,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 			if(m_scale_integer) {
 				ratio = float(m_screen->display()->mode().imgw) / float(m_screen->display()->mode().imgh);
 			} else {
-				ratio = float(m_screen->display()->mode().xres) / float(m_screen->display()->mode().yres);
+				ratio = float(m_screen->display()->mode().framew) / float(m_screen->display()->mode().frameh);
 			}
 			break;
 		case DISPLAY_ASPECT_AREA:
@@ -280,8 +280,8 @@ void NormalInterface::update()
 			   m_window_scaling)
 			{
 				// TODO incomplete, will not resize properly when ratio is fixed
-				int w = m_screen->display()->mode().xres * m_window_scaling;
-				int h = m_screen->display()->mode().yres * m_window_scaling;
+				int w = m_screen->display()->mode().framew * m_window_scaling;
+				int h = m_screen->display()->mode().frameh * m_window_scaling;
 				if(m_cur_zoom == ZoomMode::NORMAL) {
 					h += std::min(256, w/4); //the sysunit proportions are 4:1
 				}

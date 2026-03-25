@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2023  Marco Bortolin
+ * Copyright (C) 2019-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -78,10 +78,10 @@ void ScreenRenderer_SDL2D::store_screen_params(const ScreenRenderer::Params &_sc
 void ScreenRenderer_SDL2D::store_vga_framebuffer(
 		FrameBuffer &_fb, const VideoModeInfo &_mode)
 {
-	assert(unsigned(_mode.xres * _mode.yres) <= _fb.size());
+	assert(unsigned(_mode.framew * _mode.frameh) <= _fb.size());
 	assert(_fb.width() == m_vga.fb_width);
 	
-	m_vga.res = {0, 0, _mode.xres, _mode.yres};
+	m_vga.res = {0, 0, _mode.framew, _mode.frameh};
 	int result = SDL_UpdateTexture(m_vga.texture, &m_vga.res, &_fb[0], _fb.pitch());
 	if(result < 0) {
 		PDEBUGF(LOG_V0, LOG_GUI, "Cannot update VGA texture: %s\n", SDL_GetError());

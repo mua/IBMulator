@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -26,7 +26,7 @@
 #include <chrono>
 #include <SDL.h>
 
-#define VGA_MAX_XRES 800
+#define VGA_MAX_XRES 832
 #define VGA_MAX_YRES 600
 #define VGA_MAX_HFREQ 0 //31.5 TODO add ini file setting
 
@@ -125,11 +125,13 @@ private:
 		bool valid_mode;
 
 		uint32_t palette[COLOR_MODE_COUNT][256];
+		uint8_t overscan_color;
 
 		uint8_t charmap[2][0x2000];
 		bool charmap_updated;
 		bool charmap_select;
 
+		unsigned xoffset, yoffset;
 		unsigned prev_cursor_x, prev_cursor_y;
 		uint8_t h_panning, v_panning;
 		uint16_t line_compare;
@@ -178,17 +180,23 @@ public:
 	inline const VideoModeInfo & last_mode() const { return m_last_mode; }
 	inline const VideoTimings & last_timings() const { return m_last_timings; }
 
-	void set_mode(const VideoModeInfo &_mode);
+	void set_mode(const VideoModeInfo &_mode, const VideoTimings &_timings);
 	void set_timings(const VideoTimings &_timings);
 	void set_text_charmap(bool _map, uint8_t *_fbuffer);
 	void set_text_charbyte(bool _map, uint16_t _address, uint8_t _data);
 	void enable_AB_charmaps(bool _enable);
 	void palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue);
+	void set_overscan_color(uint8_t _index);
 	void gfx_screen_line_update(unsigned _scanline, std::vector<uint8_t> &_linedata,
 			uint8_t *_tiles, uint16_t _tiles_count);
 	void gfx_screen_line_update(unsigned _scanline, std::vector<uint8_t> &_linedata);
 	void text_update(uint8_t *_old_text, uint8_t *_new_text,
 			unsigned _cursor_x, unsigned _cursor_y, TextModeInfo *_tm_info);
+	unsigned overscan_screen_line_update(unsigned _img_y);
+	enum class OverscanBorder {
+		top, bottom, left, right 
+	};
+	unsigned overscan_screen_update(OverscanBorder _side);
 	void clear_screen();
 
 	void copy_screen(uint8_t *_buffer);

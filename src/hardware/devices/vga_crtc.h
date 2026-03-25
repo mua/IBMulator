@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019  Marco Bortolin
+ * Copyright (C) 2017-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -133,30 +133,30 @@ struct VGA_CRTC
 	struct {
 		bool    EVRA;         // Enable Vertical Retrace Access (7)
 		uint8_t DES;          // Display Enable Skew (6-5)
-		uint8_t EB;           // End Horizontal Blanking (4-0), bits 4-0 of 6
+		uint8_t EHB;          // End Horizontal Blanking (4-0), bits 4-0 of 6
 		operator uint8_t() const {
-			return (EVRA << 7) | (DES << 5 & CRTC_DES) | (EB & CRTC_EB);
+			return (EVRA << 7) | (DES << 5 & CRTC_DES) | (EHB & CRTC_EB);
 		}
 		void operator=(uint8_t _v) {
-			EVRA = (_v & CRTC_EVRA); DES = (_v & CRTC_DES) >> 5; EB = (_v & CRTC_EB);
+			EVRA = (_v & CRTC_EVRA); DES = (_v & CRTC_DES) >> 5; EHB = (_v & CRTC_EB);
 		}
 		operator const char*() const {
 			return ::register_to_string((uint8_t)(*this),
-			{{5,"EB"},{2,"DES"},{1,"EVRA"}});
+			{{5,"EHB"},{2,"DES"},{1,"EVRA"}});
 		}
 	} end_hblank;           // Index 03h (03) -- End Horizontal Blanking
 
 	uint8_t start_hretrace; // Index 04h (04) -- Start Horizontal Retrace
 
 	struct {
-		bool    EB5;          // End Horizontal Blanking, bit 5 (7)
+		bool    EHB5;         // End Horizontal Blanking, bit 5 (7)
 		uint8_t HRD;          // Horizontal Retrace Delay (6-5)
 		uint8_t EHR;          // End Horizontal Retrace (4-0)
 		operator uint8_t() const {
-			return (EB5 << 7) | (HRD << 5 & CRTC_HRD) | (EHR & CRTC_EHR);
+			return (EHB5 << 7) | (HRD << 5 & CRTC_HRD) | (EHR & CRTC_EHR);
 		}
 		void operator=(uint8_t _v) {
-			EB5 = (_v & CRTC_EB5); HRD = (_v & CRTC_HRD) >> 5; EHR = (_v & CRTC_EHR);
+			EHB5 = (_v & CRTC_EB5); HRD = (_v & CRTC_HRD) >> 5; EHR = (_v & CRTC_EHR);
 		}
 		operator const char*() const {
 			return ::register_to_string((uint8_t)(*this),
@@ -372,7 +372,8 @@ struct VGA_CRTC
 	// DEBUGGING
 	operator const char*() const { return register_to_string(address); }
 	const char * register_to_string(uint8_t _index) const;
-	void registers_to_textfile(FILE *_txtfile);
+	const std::string & registers_to_string() const;
+	const std::string & latches_to_string() const;
 
 
 	static constexpr const std::array<const char*, CRTC_REGCOUNT> regnames = {{

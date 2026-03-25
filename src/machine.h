@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -215,8 +215,11 @@ public:
 	std::shared_ptr<MpsPrinter> get_printer() {
 		return m_printer;
 	}
-	
-	//inter-thread commands:
+
+	// machine thread commands:
+	void cmd_pause_imm(bool _show_notice=true);
+
+	// inter-thread commands:
 	void cmd_quit();
 	void cmd_power_on();
 	void cmd_power_off();

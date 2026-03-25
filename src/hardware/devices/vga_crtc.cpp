@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019  Marco Bortolin
+ * Copyright (C) 2018-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -191,7 +191,7 @@ void VGA_CRTC::latch_vtotal()
 
 void VGA_CRTC::latch_end_hblank()
 {
-	latches.end_hblank = end_hblank.EB | (end_hretrace.EB5<<5);
+	latches.end_hblank = end_hblank.EHB | (end_hretrace.EHB5<<5);
 }
 
 void VGA_CRTC::latch_start_vblank()
@@ -281,7 +281,7 @@ std::array<uint8_t,CRTC_REGCOUNT> VGA_CRTC::get_registers()
 
 const char * VGA_CRTC::register_to_string(uint8_t _index) const
 {
-	static std::string s;
+	thread_local static std::string s;
 	s = regnames[_index%CRTC_REGCOUNT];
 	switch(_index) {
 		case CRTC_END_HBLANK      : s += " ["; s += (const char*)end_hblank;      s += "]"; break;
@@ -294,15 +294,42 @@ const char * VGA_CRTC::register_to_string(uint8_t _index) const
 		case CRTC_VRETRACE_END    : s += " ["; s += (const char*)vretrace_end;    s += "]"; break;
 		case CRTC_UNDERLINE       : s += " ["; s += (const char*)underline;       s += "]"; break;
 		case CRTC_MODE_CONTROL    : s += " ["; s += (const char*)mode_control;    s += "]"; break;
+		default: break;
 	}
 	return s.c_str();
 }
 
-void VGA_CRTC::registers_to_textfile(FILE *_file)
+const std::string & VGA_CRTC::registers_to_string() const
 {
+	thread_local static std::string s;
+	s = "";
 	for(int i=0; i<CRTC_REGCOUNT; i++) {
-		fprintf(_file, "0x%02X 0x%02X %*u  %s\n", i, get_register(i), 3, get_register(i), register_to_string(i));
+		s += str_format("0x%02X 0x%02X %03u  %s\n", i, get_register(i), get_register(i), register_to_string(i));
 	}
+	return s;
+}
+
+const std::string & VGA_CRTC::latches_to_string() const
+{
+	thread_local static std::string s;
+	s = "";
+	s += str_format("0x%04X %05u Horizontal Total (8-bit)\n",          htotal,                  htotal);
+	s += str_format("0x%04X %05u End Horizontal Display (8-bit)\n",    hdisplay_end,            hdisplay_end);
+	s += str_format("0x%04X %05u Start Horizontal Blanking (8-bit)\n", start_hblank,            start_hblank);
+	s += str_format("0x%04X %05u End Horizontal Blanking (6-bit)\n",   latches.end_hblank,      latches.end_hblank);
+	s += str_format("0x%04X %05u Start Horizontal Retrace (8-bit)\n",  start_hretrace,          start_hretrace);
+	s += str_format("0x%04X %05u End Horizontal Retrace (5-bit)\n",    end_hretrace.EHR,        end_hretrace.EHR);
+	s += str_format("0x%04X %05u Vertical Total (10-bit)\n",           latches.vtotal,          latches.vtotal);
+	s += str_format("0x%04X %05u Vertical Display End (10-bit)\n",     latches.vdisplay_end,    latches.vdisplay_end);
+	s += str_format("0x%04X %05u Start Vertical Blanking (10-bit)\n",  latches.start_vblank,    latches.start_vblank);
+	s += str_format("0x%04X %05u End Vertical Blanking (7-bit)\n",     end_vblank & 0x7f,       end_vblank & 0x7f);
+	s += str_format("0x%04X %05u Vertical Retrace Start (10-bit)\n",   latches.vretrace_start,  latches.vretrace_start);
+	s += str_format("0x%04X %05u Vertical Retrace End (4-bit)\n",      vretrace_end.VRE,        vretrace_end.VRE);
+	s += str_format("0x%04X %05u Line Offset (10-bit)\n",              latches.line_offset,     latches.line_offset);
+	s += str_format("0x%04X %05u Line Compare target (10-bit)\n",      latches.line_compare,    latches.line_compare);
+	s += str_format("0x%04X %05u Start Address (16-bit) \n",           latches.start_address,   latches.start_address);
+	s += str_format("0x%04X %05u Cursor Location (16-bit)\n",          latches.cursor_location, latches.cursor_location);
+	return s;
 }
 
 uint16_t VGA_CRTC::mux_mem_address(uint16_t _row_addr_cnt, uint16_t _row_scan_cnt)
