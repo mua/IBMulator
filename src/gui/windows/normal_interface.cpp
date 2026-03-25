@@ -300,6 +300,13 @@ void NormalInterface::update()
 			m_screen->display()->clear_dimension_updated();
 		}
 		m_screen->display()->unlock();
+	} else if(m_aspect_mode == DISPLAY_ASPECT_VGA) {
+		m_screen->display()->lock();
+		if(m_screen->display()->dimension_updated()) {
+			container_size_changed(m_gui->window_width(), m_gui->window_height());
+			m_screen->display()->clear_dimension_updated();
+		}
+		m_screen->display()->unlock();
 	}
 
 	if(m_machine->is_paused() && m_led_pause==false) {
