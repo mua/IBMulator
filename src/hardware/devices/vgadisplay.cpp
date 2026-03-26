@@ -48,23 +48,14 @@ void FrameBuffer::clear()
 
 void FrameBuffer::copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) const
 {
-	uint8_t *src = (uint8_t*)&m_buffer[0];
-	if(_mode.framew > m_width) {
-		return;
-	}
-	if(_mode.frameh > m_height) {
+	if(_mode.framew > m_width || _mode.frameh > m_height) {
 		return;
 	}
 
-	const unsigned spitch = m_width * m_bypp;
 	const unsigned dpitch = _mode.framew * m_bypp;
 
 	for(unsigned y = 0; y < _mode.frameh; y++) {
-		for(unsigned x = 0; x < _mode.framew; x++) {
-			// FIXME this is UB!
-			// TODO use std::memcpy() or consider C++23's std::start_lifetime_as
-			*((uint32_t*)(&_dest[y*dpitch + x*m_bypp])) = *((uint32_t*)(&src[y*spitch + x*m_bypp]));
-		}
+		std::memcpy(&_dest[y*dpitch], &m_buffer[y*m_width], _mode.framew * m_bypp);
 	}
 }
 
