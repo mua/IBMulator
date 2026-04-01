@@ -218,6 +218,17 @@ table.default td
 	max-width: 70dp;
 }
 
+#vga_dac_palette
+{
+	float: right;
+	margin: 10dp;
+	width: 128dp;
+	height: 128dp;
+	border: 1dp;
+	border-color: #000000;
+	z-index: 1;
+}
+
 #pic th
 {
 	width: 50dp;

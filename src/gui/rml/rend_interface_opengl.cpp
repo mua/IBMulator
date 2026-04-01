@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -196,6 +196,8 @@ void RmlRenderer_OpenGL::RenderGeometry(Rml::CompiledGeometryHandle _geometry,
 		for(auto &sampler : m_program_texture->get_samplers()) {
 			if(sampler.category == GLShaderProgram::Sampler2D::Category::Source) {
 				PDEBUGF(LOG_V5, LOG_GUI, "Using tex %u\n", _texture);
+				GLCALL( glSamplerParameteri(sampler.gl_sampler, GL_TEXTURE_MAG_FILTER, tex->second.filter) );
+				GLCALL( glSamplerParameteri(sampler.gl_sampler, GL_TEXTURE_MIN_FILTER, tex->second.filter) );
 				m_program_texture->set_uniform_sampler2D(sampler.tex_uniforms, sampler.gl_sampler, tex->second.gl_texture);
 				if(m_mult_alpha_uniform) {
 					m_program_texture->set_uniform_int(m_mult_alpha_uniform, tex->second.mult_alpha);
@@ -223,6 +225,48 @@ void RmlRenderer_OpenGL::ReleaseGeometry(Rml::CompiledGeometryHandle handle)
 	GLCALL( glDeleteBuffers(1, &geometry->gl_ibo) );
 
 	delete geometry;
+}
+
+Rml::CompiledShaderHandle RmlRenderer_OpenGL::CompileShader(const Rml::String &name, const Rml::Dictionary &parameters)
+{
+	// TODO
+
+	CompiledShader shader = {};
+	if(name == "shader") {
+		// the name of the shader:
+		// const Rml::String value = Rml::Get(parameters, "value", Rml::String());
+		shader.type = CompiledShaderType::Invalid;
+		shader.dimensions = Rml::Get(parameters, "dimensions", Rml::Vector2f(0.f));
+	}
+
+	if(shader.type != CompiledShaderType::Invalid) {
+		return reinterpret_cast<Rml::CompiledShaderHandle>(new CompiledShader(std::move(shader)));
+	}
+
+	Rml::Log::Message(Rml::Log::LT_WARNING, "Unsupported shader type '%s'.", name.c_str());
+	return {};
+}
+
+void RmlRenderer_OpenGL::RenderShader(Rml::CompiledShaderHandle _shader,
+	Rml::CompiledGeometryHandle _geometry, Rml::Vector2f _translation, Rml::TextureHandle _texture)
+{
+	// TODO
+	UNUSED(_geometry);
+	UNUSED(_translation);
+	UNUSED(_texture);
+
+	const CompiledShader &shader = *reinterpret_cast<CompiledShader*>(_shader);
+	const CompiledShaderType type = shader.type;
+	switch(type) {
+		default:
+			Rml::Log::Message(Rml::Log::LT_WARNING, "Unhandled render shader %d.", (int)type);
+			break;
+	}
+}
+
+void RmlRenderer_OpenGL::ReleaseShader(Rml::CompiledShaderHandle _shader)
+{
+	delete reinterpret_cast<CompiledShader*>(_shader);
 }
 
 void RmlRenderer_OpenGL::EnableScissorRegion(bool enable)
@@ -267,14 +311,14 @@ Rml::TextureHandle RmlRenderer_OpenGL::GenerateTexture(
 	GLCALL( glBindTexture(GL_TEXTURE_2D, 0) );
 
 	Rml::TextureHandle handle = static_cast<Rml::TextureHandle>(gltex);
-	m_textures[handle] = CompiledTexture{ gltex, false };
+	m_textures[handle] = CompiledTexture{ gltex, false, GL_LINEAR };
 
 	PDEBUGF(LOG_V4, LOG_GUI, "Generated ephemeral tex %llu, count: %llu\n", gltex, m_textures.size());
 
 	return gltex;
 }
 
-Rml::TextureHandle RmlRenderer_OpenGL::LoadTexture(SDL_Surface *_surface)
+Rml::TextureHandle RmlRenderer_OpenGL::LoadTexture(SDL_Surface *_surface, ImageRendering _rendering)
 {
 	assert(_surface);
 	if(_surface->format->BytesPerPixel != 4) {
@@ -294,7 +338,8 @@ Rml::TextureHandle RmlRenderer_OpenGL::LoadTexture(SDL_Surface *_surface)
 	SDL_UnlockSurface(_surface);
 
 	Rml::TextureHandle handle = static_cast<Rml::TextureHandle>(gltex);
-	m_textures[handle] = CompiledTexture{ gltex, true };
+	GLuint filter = _rendering == ImageRendering::crisp_edges ? GL_NEAREST : GL_LINEAR;
+	m_textures[handle] = CompiledTexture{ gltex, true, filter };
 
 	PDEBUGF(LOG_V4, LOG_GUI, "Generated tex %llu, count: %llu\n", handle, m_textures.size());
 

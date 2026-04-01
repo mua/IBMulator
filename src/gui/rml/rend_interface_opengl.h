@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -48,6 +48,12 @@ protected:
 	struct CompiledTexture {
 		GLuint gl_texture;
 		bool mult_alpha;
+		GLuint filter;
+	};
+	enum class CompiledShaderType { Invalid = 0 };
+	struct CompiledShader {
+		CompiledShaderType type;
+		Rml::Vector2f dimensions;
 	};
 
 	std::map<Rml::TextureHandle, CompiledTexture> m_textures;
@@ -56,20 +62,25 @@ public:
 	RmlRenderer_OpenGL(SDL_Renderer *_renderer, SDL_Window *_screen);
 	~RmlRenderer_OpenGL();
 
-	Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices);
-	virtual void RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture);
-	virtual void ReleaseGeometry(Rml::CompiledGeometryHandle geometry);
+	Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) override;
+	void RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture) override;
+	void ReleaseGeometry(Rml::CompiledGeometryHandle geometry) override;
 
-	void EnableScissorRegion(bool enable);
-	void SetScissorRegion(Rml::Rectanglei region);
+	Rml::CompiledShaderHandle CompileShader(const Rml::String &_name, const Rml::Dictionary &_parameters) override;
+	void RenderShader(Rml::CompiledShaderHandle _shader, Rml::CompiledGeometryHandle _geometry, Rml::Vector2f _translation,
+		Rml::TextureHandle _texture) override;
+	void ReleaseShader(Rml::CompiledShaderHandle _shader) override;
+	
+	void EnableScissorRegion(bool enable) override;
+	void SetScissorRegion(Rml::Rectanglei region) override;
 
-	Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source_data, Rml::Vector2i source_dimensions);
-	void ReleaseTexture(Rml::TextureHandle texture_handle);
+	Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source_data, Rml::Vector2i source_dimensions) override;
+	void ReleaseTexture(Rml::TextureHandle texture_handle) override;
 
-	void SetDimensions(int _width, int _height);
+	void SetDimensions(int _width, int _height) override;
 
 protected:
-	uintptr_t LoadTexture(SDL_Surface *_surface);
+	uintptr_t LoadTexture(SDL_Surface *_surface, ImageRendering _scaling) override;
 };
 
 #endif

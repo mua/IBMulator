@@ -81,8 +81,24 @@ private:
 			Rml::Element *registers, *latches;
 		} crtc;
 
+		struct {
+			bool is_visible;
+			Rml::Element *registers;
+		} gfx;
+
+		struct {
+			bool is_visible;
+			Rml::Element *registers;
+		} att;
+
+		struct {
+			bool is_visible;
+			Rml::Element *registers;
+			SDL_Surface *palette;
+		} dac;
+
 	} m_vga = {};
-	
+
 	struct {
 		bool is_running;
 		Rml::Element *panel;
@@ -105,10 +121,13 @@ private:
 	void on_cmd_vga_screenshot(Rml::Event &);
 	void on_cmd_vga_skip_scanl(Rml::Event &);
 	void on_cmd_vga_skip_frame(Rml::Event &);
+	void on_cmd_vga_stats_show(Rml::Event &);
 	void on_cmd_vga_genreg_show(Rml::Event &);
 	void on_cmd_vga_seq_show(Rml::Event &);
 	void on_cmd_vga_crtc_show(Rml::Event &);
-	void on_cmd_vga_stats_show(Rml::Event &);
+	void on_cmd_vga_gfx_show(Rml::Event &);
+	void on_cmd_vga_att_show(Rml::Event &);
+	void on_cmd_vga_dac_show(Rml::Event &);
 	void on_cmd_pit_update(Rml::Event &);
 	void on_cmd_pic_update(Rml::Event &);
 	void update_pit();
@@ -121,6 +140,7 @@ public:
 	DevStatus(GUI * _gui, Rml::Element *_button, Machine *_machine);
 
 	void update() override;
+	SDL_Surface * get_vga_dac_palette_surface();
 
 protected:
 	void create() override;

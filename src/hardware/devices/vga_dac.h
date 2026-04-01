@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019  Marco Bortolin
+ * Copyright (C) 2018-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -32,5 +32,5 @@ struct VGA_DAC
 	} palette[256];              // Palette Data registers
 	uint8_t pel_mask;            // PEL Mask Register
 
-	void registers_to_textfile(FILE *_txtfile);
+	const std::string & registers_to_string() const;
 };

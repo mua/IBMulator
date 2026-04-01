@@ -25,9 +25,7 @@ const std::string & VGA_GenRegs::registers_to_string() const
 {
 	thread_local static std::string s;
 	s = "";
-
 	s += str_format("0x%02X %03u  Miscellaneous Output [%s]\n", (uint8_t)misc_output, (uint8_t)misc_output, (const char*)misc_output);
 	s += str_format("0x%02X %03u  Video Subsystem Enable\n", video_enable, video_enable);
-
 	return s;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,8 +43,12 @@ public:
 	Rml::TextureHandle GetNamedTexture(const std::string &_name);
 
 protected:
-	virtual uintptr_t LoadTexture(SDL_Surface *_surface) = 0;
+	enum class ImageRendering : int {
+		smooth, crisp_edges
+	};
+	virtual uintptr_t LoadTexture(SDL_Surface *_surface, ImageRendering _rendering) = 0;
 	Rml::TextureHandle LoadNamedTexture(Rml::Vector2i &texture_dimensions_, const std::string &_source);
+	static Rml::Dictionary GetTextureParameters(const std::string &_source);
 };
 
 #endif

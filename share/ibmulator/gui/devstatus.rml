@@ -223,6 +223,41 @@
 				<p id="vga_crtc_latches" class="regdump">latches</p>
 			</div>
 			<div class="clear"></div>
+
+
+			<div class="toolbar vga_section">
+			<button id="cmd_vga_gfx_show" class="expand"><btnicon /></button>
+			<span>Graphics Controller</span> 
+			</div>
+
+			<div id="vga_gfx" class="d-none">
+				<p id="vga_gfx_registers" class="regdump">registers</p>
+			</div>
+			<div class="clear"></div>
+
+
+			<div class="toolbar vga_section">
+			<button id="cmd_vga_att_show" class="expand"><btnicon /></button>
+			<span>Attribute Controller</span> 
+			</div>
+
+			<div id="vga_att" class="d-none">
+				<p id="vga_att_registers" class="regdump">registers</p>
+			</div>
+			<div class="clear"></div>
+
+
+			<div class="toolbar vga_section">
+			<button id="cmd_vga_dac_show" class="expand"><btnicon /></button>
+			<span>DAC</span> 
+			</div>
+
+			<div id="vga_dac" class="d-none">
+				<img id="vga_dac_palette" src="gui:vga_dac_palette?rendering=crisp-edges" />
+				<p id="vga_dac_registers" class="regdump">registers</p>
+			</div>
+			<div class="clear"></div>
+
 			</div>
 		</panel>
 

@@ -39,10 +39,13 @@ event_map_t DevStatus::ms_evt_map = {
 	GUI_EVT( "cmd_vga_update",     "click", DevStatus::on_cmd_vga_update ),
 	GUI_EVT( "cmd_pit_update",     "click", DevStatus::on_cmd_pit_update ),
 	GUI_EVT( "cmd_pic_update",     "click", DevStatus::on_cmd_pic_update ),
+	GUI_EVT( "cmd_vga_stats_show", "click", DevStatus::on_cmd_vga_stats_show ),
 	GUI_EVT( "cmd_vga_genreg_show","click", DevStatus::on_cmd_vga_genreg_show ),
 	GUI_EVT( "cmd_vga_seq_show",   "click", DevStatus::on_cmd_vga_seq_show ),
 	GUI_EVT( "cmd_vga_crtc_show",  "click", DevStatus::on_cmd_vga_crtc_show ),
-	GUI_EVT( "cmd_vga_stats_show", "click", DevStatus::on_cmd_vga_stats_show ),
+	GUI_EVT( "cmd_vga_gfx_show",   "click", DevStatus::on_cmd_vga_gfx_show ),
+	GUI_EVT( "cmd_vga_att_show",   "click", DevStatus::on_cmd_vga_att_show ),
+	GUI_EVT( "cmd_vga_dac_show",   "click", DevStatus::on_cmd_vga_dac_show ),
 	GUI_EVT( "close",              "click", DebugTools::DebugWindow::on_cancel ),
 	GUI_EVT( "*",                  "keydown", Window::on_keydown )
 };
@@ -162,6 +165,15 @@ void DevStatus::create()
 
 	m_vga.crtc.is_visible = false;
 
+	m_vga.gfx.registers = get_element("vga_gfx_registers");
+	m_vga.gfx.is_visible = false;
+
+	m_vga.att.registers = get_element("vga_att_registers");
+	m_vga.att.is_visible = false;
+
+	m_vga.dac.registers = get_element("vga_dac_registers");
+	m_vga.dac.is_visible = false;
+	m_vga.dac.palette = nullptr;
 
 	m_pit.is_running = false;
 	m_pit.panel = get_element("pit");
@@ -225,6 +237,27 @@ void DevStatus::on_cmd_vga_crtc_show(Rml::Event &)
 	m_vga.crtc.is_visible = !m_vga.crtc.is_visible;
 	get_element("vga_crtc")->SetClass("d-none", !m_vga.crtc.is_visible);
 	get_element("cmd_vga_crtc_show")->SetClass("expanded", m_vga.crtc.is_visible);
+}
+
+void DevStatus::on_cmd_vga_gfx_show(Rml::Event &)
+{
+	m_vga.gfx.is_visible = !m_vga.gfx.is_visible;
+	get_element("vga_gfx")->SetClass("d-none", !m_vga.gfx.is_visible);
+	get_element("cmd_vga_gfx_show")->SetClass("expanded", m_vga.gfx.is_visible);
+}
+
+void DevStatus::on_cmd_vga_att_show(Rml::Event &)
+{
+	m_vga.att.is_visible = !m_vga.att.is_visible;
+	get_element("vga_att")->SetClass("d-none", !m_vga.att.is_visible);
+	get_element("cmd_vga_att_show")->SetClass("expanded", m_vga.att.is_visible);
+}
+
+void DevStatus::on_cmd_vga_dac_show(Rml::Event &)
+{
+	m_vga.dac.is_visible = !m_vga.dac.is_visible;
+	get_element("vga_dac")->SetClass("d-none", !m_vga.dac.is_visible);
+	get_element("cmd_vga_dac_show")->SetClass("expanded", m_vga.dac.is_visible);
 }
 
 void DevStatus::on_cmd_vga_dump_state(Rml::Event &)
@@ -595,6 +628,31 @@ void DevStatus::update_vga(bool _force)
 		auto crtc_latches = str_to_html(vga->crtc().latches_to_string());
 		m_vga.crtc.latches->SetInnerRML(crtc_latches);
 	}
+
+	// Graphics Controller
+	if(m_vga.gfx.is_visible || _force) {
+		auto registers = str_to_html(vga->gfx_ctrl().registers_to_string());
+		m_vga.gfx.registers->SetInnerRML(registers);
+	}
+
+	// Attribute Controller
+	if(m_vga.att.is_visible || _force) {
+		auto registers = str_to_html(vga->att_ctrl().registers_to_string());
+		m_vga.att.registers->SetInnerRML(registers);
+	}
+
+	// DAC
+	if(m_vga.dac.is_visible || _force) {
+		if(m_vga.dac.palette && m_gui->vga_display()->palette_updated()) {
+			m_gui->vga_display()->lock();
+			m_gui->vga_display()->copy_palette(m_vga.dac.palette);
+			m_gui->vga_display()->clear_palette_updated();
+			m_gui->vga_display()->unlock();
+			m_gui->update_surface("gui:vga_dac_palette", m_vga.dac.palette);
+		}
+		auto registers = str_to_html(vga->dac().registers_to_string());
+		m_vga.dac.registers->SetInnerRML(registers);
+	}
 }
 
 void DevStatus::update()
@@ -625,4 +683,20 @@ void DevStatus::update()
 	} else {
 		updated = false;
 	}
+}
+
+SDL_Surface * DevStatus::get_vga_dac_palette_surface()
+{
+	if(!m_vga.dac.palette) {
+		m_vga.dac.palette = SDL_CreateRGBSurface(0,
+				16, 16,
+				32,
+				0x000000ff,
+				0x0000ff00,
+				0x00ff0000,
+				0xff000000
+		);
+		SDL_FillRect(m_vga.dac.palette, NULL, 0xff000000);
+	}
+	return m_vga.dac.palette;
 }

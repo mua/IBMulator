@@ -2340,12 +2340,15 @@ void VGA::state_to_textfile(std::string _filepath)
 	fprintf(file.get(), "%*u  Frame end\n",                 8, m_s.timings.ns.frame_end);
 	
 	fprintf(file.get(), "\nGraphics Controller\n");
-	m_s.gfx_ctrl.registers_to_textfile(file.get());
+	auto gfx_registers = m_s.gfx_ctrl.registers_to_string();
+	fwrite(gfx_registers.data(), gfx_registers.length(), 1, file.get());
 
 	fprintf(file.get(), "\nAttribute Controller\n");
-	m_s.attr_ctrl.registers_to_textfile(file.get());
+	auto attr_registers = m_s.attr_ctrl.registers_to_string();
+	fwrite(attr_registers.data(), attr_registers.length(), 1, file.get());
 
 	fprintf(file.get(), "\nDigital-to-Analog Converter\n");
-	m_s.dac.registers_to_textfile(file.get());
+	auto dac_registers = m_s.dac.registers_to_string();
+	fwrite(dac_registers.data(), dac_registers.length(), 1, file.get());
 }
 

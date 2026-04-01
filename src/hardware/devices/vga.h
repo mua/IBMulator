@@ -273,6 +273,9 @@ public:
 	const VGA_GenRegs & gen_regs() const { return m_s.gen_regs; }
 	const VGA_Sequencer & sequencer() const { return m_s.sequencer; }
 	const VGA_CRTC & crtc() const { return m_s.CRTC; }
+	const VGA_GfxCtrl & gfx_ctrl() const { return m_s.gfx_ctrl; }
+	const VGA_AttrCtrl & att_ctrl() const { return m_s.attr_ctrl; }
+	const VGA_DAC & dac() const { return m_s.dac; }
 
 	double current_scanline();
 	double current_scanline(bool &disp_, bool &hretr_, bool &vretr_);

@@ -276,6 +276,28 @@ void VGADisplay::palette_change(uint8_t _index, uint8_t _red, uint8_t _green, ui
 
 	m_s.palette[COLOR_MODE_MONO][_index] = PALETTE_ENTRY(mono, mono, mono);
 	m_s.palette[COLOR_MODE_MONO_INVERTED][_index] = PALETTE_ENTRY(mono_inv, mono_inv, mono_inv);
+
+	m_palette_updated = true;
+}
+
+void VGADisplay::copy_palette(SDL_Surface *_dest) const
+{
+	const int side_pix = 16;
+	const int line_size = side_pix * sizeof(uint32_t);
+
+	if(!_dest || _dest->w < side_pix || _dest->h < side_pix) {
+		return;
+	}
+
+	SDL_LockSurface(_dest);
+	const uint8_t *source = reinterpret_cast<const uint8_t*>(m_s.palette[COLOR_MODE_RGB]);
+	uint8_t *dest = reinterpret_cast<uint8_t*>(_dest->pixels);
+	for(unsigned h = 0; h < side_pix; h++) {
+		std::memcpy(dest, source, line_size);
+		dest += _dest->pitch;
+		source += line_size;
+	}
+	SDL_UnlockSurface(_dest);
 }
 
 void VGADisplay::set_overscan_color(uint8_t _index)

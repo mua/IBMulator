@@ -139,6 +139,7 @@ private:
 
 	std::atomic<bool> m_dim_updated;
 	std::atomic<bool> m_fb_updated;
+	std::atomic<bool> m_palette_updated;
 	std::mutex m_mutex;
 	std::condition_variable m_cv;
 
@@ -210,6 +211,10 @@ public:
 	inline bool dimension_updated() { return m_dim_updated; }
 	inline void set_dimension_updated() { m_dim_updated = true; }
 	inline void clear_dimension_updated() { m_dim_updated = false; }
+
+	bool palette_updated() const { return m_palette_updated; }
+	void clear_palette_updated() { m_palette_updated = false; }
+	void copy_palette(SDL_Surface *_dest) const;
 
 	void set_color_mode(ColorMode _mode) { m_color_mode = _mode; }
 	ColorMode color_mode() const { return m_color_mode; }

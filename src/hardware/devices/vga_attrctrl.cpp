@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019  Marco Bortolin
+ * Copyright (C) 2018-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -95,10 +95,12 @@ const char * VGA_AttrCtrl::register_to_string(uint8_t _index) const
 	return s.c_str();
 }
 
-void VGA_AttrCtrl::registers_to_textfile(FILE *_file)
+const std::string & VGA_AttrCtrl::registers_to_string() const
 {
-	fprintf(_file, "     0x%02X %*u  Address [%s]\n", uint8_t(address), 3, uint8_t(address), (const char*)address);
+	thread_local static std::string s;
+	s = str_format("     0x%02X %03u  Address [%s]\n", uint8_t(address), uint8_t(address), (const char*)address);
 	for(int i=0; i<ATTC_REGCOUNT; i++) {
-		fprintf(_file, "0x%02X 0x%02X %*u  %s\n", i, get_register(i), 3, get_register(i), register_to_string(i));
+		s += str_format("0x%02X 0x%02X %03u  %s\n", i, get_register(i), get_register(i), register_to_string(i));
 	}
+	return s;
 }

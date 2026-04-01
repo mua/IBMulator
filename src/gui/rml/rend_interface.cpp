@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -34,18 +34,67 @@ RmlRenderer::~RmlRenderer()
 {
 }
 
-Rml::TextureHandle RmlRenderer::LoadTexture(Rml::Vector2i &texture_dimensions_, const std::string &source)
+Rml::Dictionary RmlRenderer::GetTextureParameters(const std::string &_source)
 {
-	PDEBUGF(LOG_V2, LOG_GUI, "Loading texture '%s'\n", source.c_str());
+	Rml::Dictionary params;
 
-	if(source.find("gui:", 0) == 0) {
-		return LoadNamedTexture(texture_dimensions_, source);
+	if(_source.empty()) {
+		return params;
+	}
+	auto params_start = _source.find("?");
+	if(params_start == 0) {
+		return params;
 	}
 
+	params.emplace("name", _source.substr(0, params_start));
+
+	if(params_start == _source.npos || params_start == _source.size()-1) {
+		return params;
+	}
+
+	auto params_pairs = str_parse_tokens(_source.substr(params_start+1), "&");
+	for(auto & pair : params_pairs) {
+		auto equal_pos = pair.find("=");
+		std::string name, value;
+		if(equal_pos != pair.npos) {
+			name = pair.substr(0, equal_pos);
+			value = pair.substr(equal_pos+1);
+		} else {
+			name = pair;
+			value = "1";
+		}
+		if(name == "rendering") {
+			if(value == "smooth") {
+				params.emplace(name, ImageRendering::smooth);
+			} else if(value == "crisp-edges") {
+				params.emplace(name, ImageRendering::crisp_edges);
+			} else {
+				Rml::Log::Message(Rml::Log::LT_WARNING, "Unsupported image rendering parameter '%s'.", value.c_str());
+				continue;
+			}
+		} else {
+			params.emplace(name, value);
+		}
+	}
+
+	return params;
+}
+
+Rml::TextureHandle RmlRenderer::LoadTexture(Rml::Vector2i &texture_dimensions_, const std::string &_source)
+{
+	PDEBUGF(LOG_V2, LOG_GUI, "Loading texture '%s'\n", _source.c_str());
+
+	if(_source.find("gui:") == 0) {
+		return LoadNamedTexture(texture_dimensions_, _source);
+	}
+
+	auto tex_params = GetTextureParameters(_source);
+	const Rml::String name = Rml::Get(tex_params, "name", Rml::String());
+
 	Rml::FileInterface *file_interface = Rml::GetFileInterface();
-	Rml::FileHandle file_handle = file_interface->Open(source);
+	Rml::FileHandle file_handle = file_interface->Open(name);
 	if(!file_handle) {
-		PERRF(LOG_GUI, "Cannot find texture file: '%s'\n", source.c_str());
+		PERRF(LOG_GUI, "Cannot find texture file: '%s'\n", _source.c_str());
 		return false;
 	}
 
@@ -53,7 +102,7 @@ Rml::TextureHandle RmlRenderer::LoadTexture(Rml::Vector2i &texture_dimensions_, 
 	try {
 		surface = stbi_load_from_file(reinterpret_cast<FILE*>(file_handle));
 	} catch(std::runtime_error &err) {
-		PERRF(LOG_GUI, "Error loading texture '%s': %s\n", source.c_str(), err.what());
+		PERRF(LOG_GUI, "Error loading texture '%s': %s\n", _source.c_str(), err.what());
 		file_interface->Close(file_handle);
 		return false;
 	}
@@ -61,7 +110,8 @@ Rml::TextureHandle RmlRenderer::LoadTexture(Rml::Vector2i &texture_dimensions_, 
 
 	Rml::TextureHandle texture = 0;
 	try {
-		texture = LoadTexture(surface);
+		ImageRendering rendering = Rml::Get(tex_params, "rendering", ImageRendering::smooth);
+		texture = LoadTexture(surface, rendering);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "%s\n", e.what());
 		SDL_FreeSurface(surface);
@@ -77,9 +127,13 @@ Rml::TextureHandle RmlRenderer::LoadNamedTexture(Rml::Vector2i &texture_dimensio
 	SDL_Surface *surface = nullptr;
 	Rml::TextureHandle texture = 0;
 
+	auto tex_params = GetTextureParameters(_source);
+	const Rml::String name = Rml::Get(tex_params, "name", Rml::String());
+
 	try {
-		surface = GUI::instance()->load_surface(_source);
-		texture = LoadTexture(surface);
+		surface = GUI::instance()->load_surface(name);
+		ImageRendering rendering = Rml::Get(tex_params, "rendering", ImageRendering::smooth);
+		texture = LoadTexture(surface, rendering);
 	} catch(std::exception &e) {
 		PERRF(LOG_GUI, "%s\n", e.what());
 		return 0;
@@ -87,7 +141,7 @@ Rml::TextureHandle RmlRenderer::LoadNamedTexture(Rml::Vector2i &texture_dimensio
 
 	texture_dimensions_ = Rml::Vector2i(surface->w, surface->h);
 
-	m_named_textures[_source] = texture;
+	m_named_textures[name] = texture;
 	return texture;
 }
 

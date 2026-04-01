@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2024  Marco Bortolin
+ * Copyright (C) 2019-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -104,11 +104,15 @@ void RmlRenderer_SDL2D::SetScissorRegion(Rml::Rectanglei region)
 	}
 }
 
-uintptr_t RmlRenderer_SDL2D::LoadTexture(SDL_Surface *_surface)
+uintptr_t RmlRenderer_SDL2D::LoadTexture(SDL_Surface *_surface, ImageRendering _scaling)
 {
 	assert(_surface);
 
-	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+	if(_scaling == ImageRendering::crisp_edges) {
+		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+	} else {
+		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+	}
 	SDL_Texture *texture = SDL_CreateTextureFromSurface(m_renderer, _surface);
 
 	if(!texture) {

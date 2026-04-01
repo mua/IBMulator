@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2019  Marco Bortolin
+ * Copyright (C) 2018-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -19,15 +19,25 @@
 
 #include "ibmulator.h"
 #include "vga_dac.h"
+#include "utils.h"
 
 
-void VGA_DAC::registers_to_textfile(FILE *_file)
+const std::string & VGA_DAC::registers_to_string() const
 {
-	fprintf(_file, "0x%02X  DAC state\n", state);
-	fprintf(_file, "0x%02X  PEL mask\n", pel_mask);
-	fprintf(_file, "      Palette\n");
+	thread_local static std::string s;
+	s = "";
+
+	s += str_format("0x%02X %03u Palette Address (Write)\n", write_data_register, write_data_register);
+	s += str_format("     %03u Write cycle\n", write_data_cycle);
+	s += str_format("0x%02X %03u Palette Address (Read)\n", read_data_register, read_data_register);
+	s += str_format("     %03u Read cycle\n", read_data_cycle);
+	s += str_format("0x%02X %03u DAC State\n", state, state);
+	s += str_format("0x%02X %03u PEL Mask\n", pel_mask, pel_mask);
+
+	s += "      Palette\n";
 	for(int i=0; i<256; i++) {
-		fprintf(_file, "0x%02X  %*u %*u %*u\n", i, 3,
-			palette[i].red, 3, palette[i].green, 3, palette[i].blue);
+		s += str_format("0x%02X  %03u %03u %03u\n", i, palette[i].red, palette[i].green, palette[i].blue);
 	}
+
+	return s;
 }

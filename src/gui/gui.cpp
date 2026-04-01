@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -43,6 +43,7 @@
 #include "windows/mixer_control.h"
 #include "windows/shader_parameters.h"
 #include "windows/audio_osd.h"
+#include "windows/devstatus.h"
 
 #include "capture/capture.h"
 
@@ -2274,6 +2275,16 @@ SDL_Surface * GUI::load_surface(const std::string &_name)
 			throw std::runtime_error("Printer not present");
 		}
 		return printer_ctrl->get_preview_surface();
+	} else if(_name == "gui:vga_dac_palette") {
+		auto deb_tools = m_windows.get_window<DebugTools>();
+		if(!deb_tools) {
+			throw std::runtime_error("Debug tools not present");
+		}
+		auto dev_window = deb_tools->get_child_windows<DevStatus>();
+		if(dev_window.empty()) {
+			throw std::runtime_error("Devices window not present");
+		}
+		return dev_window[0]->get_vga_dac_palette_surface();
 	}
 	throw std::runtime_error(str_format("Invalid internal surface name: %s\n", _name.c_str()));
 }

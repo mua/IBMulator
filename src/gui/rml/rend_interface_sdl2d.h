@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2024  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -38,18 +38,18 @@ public:
 	RmlRenderer_SDL2D(SDL_Renderer * _renderer, SDL_Window * _screen);
 	~RmlRenderer_SDL2D();
 
-	Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices);
-	void ReleaseGeometry(Rml::CompiledGeometryHandle geometry);
-	void RenderGeometry(Rml::CompiledGeometryHandle handle, Rml::Vector2f translation, Rml::TextureHandle texture);
+	Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) override;
+	void ReleaseGeometry(Rml::CompiledGeometryHandle geometry) override;
+	void RenderGeometry(Rml::CompiledGeometryHandle handle, Rml::Vector2f translation, Rml::TextureHandle texture) override;
 
-	void EnableScissorRegion(bool enable);
-	void SetScissorRegion(Rml::Rectanglei region);
+	void EnableScissorRegion(bool enable) override;
+	void SetScissorRegion(Rml::Rectanglei region) override;
 
-	Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions);
-	void ReleaseTexture(Rml::TextureHandle texture_handle);
+	Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions) override;
+	void ReleaseTexture(Rml::TextureHandle texture_handle) override;
 	
 protected:
-	uintptr_t LoadTexture(SDL_Surface *_surface);
+	uintptr_t LoadTexture(SDL_Surface *_surface, ImageRendering _scaling) override;
 };
 
 #endif
