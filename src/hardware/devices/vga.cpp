@@ -1069,15 +1069,13 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 			PDEBUGF(LOG_V2, LOG_VGA, "ATTR CTRL");
 			if(!m_s.attr_ctrl.flip_flop) {
 				// address mode
-				bool prev_pal_enabled = m_s.attr_ctrl.address.IPAS;
+				bool prev_ipas = m_s.attr_ctrl.address.IPAS;
 				m_s.attr_ctrl.address = _value;
 				// Bit 5 must be set to 1 for normal operation of the attribute
 				// controller. This enables the video memory data to access
 				// the Palette registers. Bit 5 must be set to 0 when loading
 				// the Palette registers.
-				if(!m_s.attr_ctrl.address.IPAS) {
-					// TODO is a clear screen required?
-				} else if(!prev_pal_enabled) {
+				if(prev_ipas != m_s.attr_ctrl.address.IPAS) {
 					needs_redraw = true;
 				}
 				PDEBUGF(LOG_V2, LOG_VGA, "      <- 0x%02X Address [%s]\n",
@@ -1493,13 +1491,18 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 			img_x += VGA_X_TILESIZE;
 			continue;
 		}
-		
-		for(uint16_t tile_x = 0; (img_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++,img_x++) {
-			
+
+		for(uint16_t tile_x = 0; (img_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++,img_x++)
+		{
+			if(UNLIKELY(!m_s.attr_ctrl.address.IPAS)) {
+				line_data_[img_x] = m_display->overscan_color();
+				continue;
+			}
+
 			uint16_t pixel_x = img_x + pan;
 			uint8_t  bit_no = 7 - (pixel_x % 8);
 			uint16_t byte_offset = _row_addr_cnt + pixel_x / 8;
-			
+
 			byte_offset = m_s.CRTC.mux_mem_address(byte_offset, 0);
 
 			uint8_t attribute =
@@ -1533,7 +1536,7 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 			// DAC_regno &= video DAC mask register ???
 			line_data_[img_x] = DAC_regno;
 		}
-		
+
 		tiles_updated++;
 	}
 	
@@ -1579,13 +1582,19 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::v
 			img_x += VGA_X_TILESIZE;
 			continue;
 		}
-		for(uint16_t tile_x = 0; (img_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++, img_x++) {
+		for(uint16_t tile_x = 0; (img_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++, img_x++)
+		{
+			if(UNLIKELY(!m_s.attr_ctrl.address.IPAS)) {
+				line_data_[img_x] = m_display->overscan_color();
+				continue;
+			}
+
 			uint32_t pixel_x = img_x + pan;
 			uint32_t byte_offset = _row_addr_cnt + (pixel_x / 4);
 			byte_offset = m_s.CRTC.mux_mem_address(byte_offset, 0);
 
 			uint8_t DACreg = m_memory_planes[pixel_x & 3][byte_offset];
-			
+
 			if(m_bugs.ps_bit && m_s.attr_ctrl.attr_mode.PS) {
 				// The only program I know that rely on the PS bit in 256 color
 				// mode is the Copper demo (1992) for the line fading effect.
@@ -1665,16 +1674,23 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 			dot_x += VGA_X_TILESIZE;
 			continue;
 		}
-		for(uint16_t tile_x = 0; (dot_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++,dot_x++) {
+
+		for(uint16_t tile_x = 0; (dot_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++,dot_x++)
+		{
+			if(UNLIKELY(!m_s.attr_ctrl.address.IPAS)) {
+				line_data_[dot_x] = m_display->overscan_color();
+				continue;
+			}
+
 			uint32_t pixel_x = dot_x + pan;
 			uint16_t byte_offset = _row_addr_cnt + (pixel_x / (pix_per_byte*planes));
 			byte_offset = m_s.CRTC.mux_mem_address(byte_offset, line_y);
-			
+
 			uint8_t byte = m_memory_planes[(pixel_x/pix_per_byte) & plane_mask][byte_offset];
-			
+
 			uint8_t attribute = (8-bit_per_pix) - bit_per_pix*(pixel_x % pix_per_byte);
 			uint8_t palette_reg = (byte >> attribute) & att_mask;
-			
+
 			line_data_[dot_x] = m_s.attr_ctrl.palette[palette_reg];
 		}
 		tiles_updated++;
@@ -1768,8 +1784,11 @@ void VGA::text_update()
 	} else {
 		tm_info.h_panning &= 0x07;
 	}
-	for(int index = 0; index < 16; index++) {
-		tm_info.actl_palette[index] = m_s.attr_ctrl.palette[index];
+
+	if(LIKELY(m_s.attr_ctrl.address.IPAS)) {
+		std::memcpy(tm_info.actl_palette, m_s.attr_ctrl.palette, 16);
+	} else {
+		std::memset(tm_info.actl_palette, m_display->overscan_color(), 16);
 	}
 
 	// pass old text snapshot & new VGA memory contents
@@ -1891,7 +1910,7 @@ void VGA::frame_start(uint64_t _time)
 
 	if(m_s.render_mode == VGA_RENDER_LINE) {
 		if(!is_video_disabled()) {
-			// enable per-line rendering, 1 update for every line at hdend
+			// enable per-line rendering, 1 update for every line at hrstart
 			m_s.scanline = 0;
 			m_s.mem_addr_counter = m_s.CRTC.latches.start_address;
 

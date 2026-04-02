@@ -380,7 +380,7 @@ inline bool VGA::is_tile_dirty(unsigned _line_y, unsigned _tile_x) const
 inline bool VGA::is_video_disabled()
 {
 	// skip screen update when vga/video is disabled or the sequencer is in reset mode
-	return (!m_s.gen_regs.video_enable || !m_s.attr_ctrl.address.IPAS
+	return (!m_s.gen_regs.video_enable
 	        || !m_s.sequencer.reset.SR || !m_s.sequencer.reset.ASR
 	        || m_s.sequencer.clocking.SO);
 }

@@ -188,9 +188,10 @@ public:
 	void enable_AB_charmaps(bool _enable);
 	void palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue);
 	void set_overscan_color(uint8_t _index);
-	void gfx_screen_line_update(unsigned _scanline, std::vector<uint8_t> &_linedata,
+	uint8_t overscan_color() const { return m_s.overscan_color; }
+	void gfx_screen_line_update(unsigned _fbline, std::vector<uint8_t> &_linedata,
 			uint8_t *_tiles, uint16_t _tiles_count);
-	void gfx_screen_line_update(unsigned _scanline, std::vector<uint8_t> &_linedata);
+	void gfx_screen_line_update(unsigned _fbline, std::vector<uint8_t> &_linedata);
 	void text_update(uint8_t *_old_text, uint8_t *_new_text,
 			unsigned _cursor_x, unsigned _cursor_y, TextModeInfo *_tm_info);
 	unsigned overscan_screen_line_update(unsigned _img_y);
