@@ -1843,8 +1843,6 @@ void VGA::horizontal_retrace(uint64_t _time)
 	}
 
 	if(m_s.scanline > m_s.timings.last_vis_sl) {
-		m_stats.updated_pix = m_cur_upd_pix;
-		
 		// the distance to the next scan line is (current time + hborders + hblanking + hretracing)
 		// the start of the next scan line is equivalent to m_s.timings.ns.last_vis_sl;
 		uint32_t frame_start_dist = g_machine.get_virt_time_ns() - m_s.frame_start_time_nsec;
@@ -1854,7 +1852,7 @@ void VGA::horizontal_retrace(uint64_t _time)
 		}
 		g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::vertical_retrace,this,_1), VGA_VERTICAL_RETRACE);
 		g_machine.activate_timer(m_timer_id, vretr_dist, false);
-		
+
 		m_display->set_fb_updated();
 	}
 	
@@ -1867,14 +1865,16 @@ void VGA::frame_start(uint64_t _time)
 	
 	PDEBUGF(LOG_V2, LOG_VGA, "frame start\n");
 
+	m_stats.updated_pix = m_cur_upd_pix;
+	m_stats.frame_cnt++;
+
 	if(m_force_redraw) {
 		redraw_all();
 	}
 
 	m_s.frame_start_time_nsec = _time;
 	m_cur_upd_pix = 0;
-	m_stats.frame_cnt++;
-	
+
 	// update cursor/blinking status for this frame
 	m_s.blink_toggle = false;
 	m_s.blink_counter--;
@@ -1939,15 +1939,11 @@ void VGA::frame_end(uint64_t _time)
 			});
 			uint32_t w1 = gfx_update_thread(1, lc_w[1]);
 			w0.wait();
-			m_stats.updated_pix = (w0.get() + w1);
-		} else {
-			m_stats.updated_pix = 0;
+			m_cur_upd_pix = (w0.get() + w1);
 		}
 		m_display->set_fb_updated();
 		m_display->unlock();
 		m_s.needs_update = false;
-	} else {
-		m_stats.updated_pix = 0;
 	}
 	
 	uint64_t dist = 10_us;
@@ -1979,7 +1975,7 @@ void VGA::vertical_retrace(uint64_t _time)
 		upd_pix += m_display->overscan_screen_update(VGADisplay::OverscanBorder::top);
 		upd_pix += m_display->overscan_screen_update(VGADisplay::OverscanBorder::bottom);
 		m_display->unlock();
-		m_stats.updated_pix += upd_pix;
+		m_cur_upd_pix += upd_pix;
 		m_s.force_redraw_overs--;
 	}
 
