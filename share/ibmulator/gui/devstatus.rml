@@ -30,19 +30,22 @@
 			<span>Status</span> 
 			</div>
 			<div id="vga_stats" class="d-none">
-				<table class="default">
+				<table class="default" id="vga_enabled">
 					<tr>
-						<th>frame</th>
-							<td id="vga_frame_cnt"></td>
-						<th>upd. pix</th>
-							<td id="vga_pix_upd"></td>
-							<td id="vga_upd" class="led">upd</td>
+						<th>video</th>
+							<td id="vga_enabled_video"></td>
+						<th>SR</th>
+							<td id="vga_enabled_sr"></td>
+						<th>ASR</th>
+							<td id="vga_enabled_asr"></td>
+							<td id="vga_enabled_sync" class="led">sync</td>
 					</tr>
 					<tr>
-						<th>saddr line</th>
-							<td id="vga_saddr_line"></td>
-						<th>pal line</th>
-							<td id="vga_pal_line"></td>
+						<th>SO</th>
+							<td id="vga_enabled_so"></td>
+						<th>IPAS</th>
+							<td id="vga_enabled_ipas"></td>
+							<td id="vga_enabled_data" class="led">data</td>
 					</tr>
 				</table>
 				<table class="default">
@@ -52,6 +55,21 @@
 						<td id="vga_disp_phase"  class="led">disp</td>
 						<td id="vga_hretr_phase" class="led">hretr</td>
 						<td id="vga_vretr_phase" class="led">vretr</td>
+					</tr>
+				</table>
+				<table class="default">
+					<tr>
+						<th>frame</th>
+							<td id="vga_frame_cnt"></td>
+						<th>upd. pix</th>
+							<td id="vga_pix_upd"></td>
+							<td id="vga_upd" class="led">draw</td>
+					</tr>
+					<tr>
+						<th>saddr line</th>
+							<td id="vga_saddr_line"></td>
+						<th>pal line</th>
+							<td id="vga_pal_line"></td>
 					</tr>
 				</table>
 			</div>

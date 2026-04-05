@@ -197,6 +197,20 @@ table.default td
 	border-color: #a6a6a6;
 }
 
+#vga_stats th
+{
+	max-width: 70dp;
+}
+
+#vga_enabled td
+{
+	max-width: 30dp;
+}
+#vga_enabled th
+{
+	max-width: 40dp;
+}
+
 #vga_frame_cnt,
 #vga_pix_upd,
 #vga_pal_line,
@@ -213,10 +227,7 @@ table.default td
 	width: 40dp;
 }
 
-#vga_stats th
-{
-	max-width: 70dp;
-}
+
 
 #vga_dac_palette
 {

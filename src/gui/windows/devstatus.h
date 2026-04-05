@@ -39,6 +39,8 @@ private:
 
 		struct {
 			bool is_visible;
+			Rml::Element *enabled_video, *enabled_sr, *enabled_asr, *enabled_sync;
+			Rml::Element *enabled_so, *enabled_ipas, *enabled_data;
 			Rml::Element *frame_cnt;
 			Rml::Element *pix_upd, *upd, *saddr_line, *pal_line;
 			Rml::Element *scanl, *disp_phase, *hretr_phase, *vretr_phase;

@@ -265,7 +265,8 @@ public:
 		m_bus_timing = _bus;
 		m_vga_timing = _vga;
 	}
-	const char *current_mode_string();
+	const char *current_video_mode_string();
+	const char *current_rendering_mode_string();
 	virtual void state_to_textfile(std::string _filepath);
 	inline const VideoModeInfo & video_mode() const { return m_s.vmode; }
 	inline const VideoTimings & timings() const { return m_s.timings; }
@@ -276,6 +277,8 @@ public:
 	const VGA_GfxCtrl & gfx_ctrl() const { return m_s.gfx_ctrl; }
 	const VGA_AttrCtrl & att_ctrl() const { return m_s.attr_ctrl; }
 	const VGA_DAC & dac() const { return m_s.dac; }
+
+	bool is_video_disabled();
 
 	double current_scanline();
 	double current_scanline(bool &disp_, bool &hretr_, bool &vretr_);
@@ -304,7 +307,6 @@ protected:
 	
 	void reset_tiles();
 	void calculate_timings();
-	bool is_video_disabled();
 	void raise_interrupt();
 	void lower_interrupt();
 	void clear_screen();
@@ -379,10 +381,8 @@ inline bool VGA::is_tile_dirty(unsigned _line_y, unsigned _tile_x) const
 
 inline bool VGA::is_video_disabled()
 {
-	// skip screen update when vga/video is disabled or the sequencer is in reset mode
-	return (!m_s.gen_regs.video_enable
-	        || !m_s.sequencer.reset.SR || !m_s.sequencer.reset.ASR
-	        || m_s.sequencer.clocking.SO);
+	// disable sync pulses when vga/video is disabled or the sequencer is in reset mode
+	return (!m_s.gen_regs.video_enable || !m_s.sequencer.reset.SR || !m_s.sequencer.reset.ASR);
 }
 
 #endif

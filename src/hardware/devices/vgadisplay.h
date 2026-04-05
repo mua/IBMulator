@@ -68,7 +68,7 @@ public:
 	inline size_t size() const { return m_buffer.size(); }
 	inline size_t size_bytes() const { return m_buffer.size() * m_bypp; }
 	
-	void clear();
+	void clear(uint32_t _color);
 	void copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) const;
 	
 	inline uint32_t & operator[](size_t _pos) { return m_buffer[_pos]; }
@@ -189,6 +189,7 @@ public:
 	void palette_change(uint8_t _index, uint8_t _red, uint8_t _green, uint8_t _blue);
 	void set_overscan_color(uint8_t _index);
 	uint8_t overscan_color() const { return m_s.overscan_color; }
+	uint32_t overscan_color_rgb() const;
 	void gfx_screen_line_update(unsigned _fbline, std::vector<uint8_t> &_linedata,
 			uint8_t *_tiles, uint16_t _tiles_count);
 	void gfx_screen_line_update(unsigned _fbline, std::vector<uint8_t> &_linedata);
@@ -199,7 +200,7 @@ public:
 		top, bottom, left, right 
 	};
 	unsigned overscan_screen_update(OverscanBorder _side);
-	void clear_screen();
+	void clear_screen(uint32_t _color = PALETTE_AMASK);
 
 	void copy_screen(uint8_t *_buffer);
 	uint32_t get_color(uint8_t _index);

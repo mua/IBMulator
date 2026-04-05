@@ -69,6 +69,14 @@ void DevStatus::create()
 	m_vga.mode   = get_element("vga_mode");
 	m_vga.screen = get_element("vga_screen");
 
+	m_vga.stats.enabled_video  = get_element("vga_enabled_video");
+	m_vga.stats.enabled_sr     = get_element("vga_enabled_sr");
+	m_vga.stats.enabled_asr    = get_element("vga_enabled_asr");
+	m_vga.stats.enabled_sync   = get_element("vga_enabled_sync");
+	m_vga.stats.enabled_so     = get_element("vga_enabled_so");
+	m_vga.stats.enabled_ipas   = get_element("vga_enabled_ipas");
+	m_vga.stats.enabled_data   = get_element("vga_enabled_data");
+	
 	m_vga.stats.frame_cnt  = get_element("vga_frame_cnt");
 	m_vga.stats.pix_upd    = get_element("vga_pix_upd");
 	m_vga.stats.upd        = get_element("vga_upd");
@@ -409,13 +417,18 @@ void DevStatus::update_vga(bool _force)
 	static std::string str(100,'0');
 
 	if(vm.mode == VGA_M_TEXT) {
-		str_format(str, "%ux%u %s %ux%u %ux%u",
-			vm.imgw, vm.imgh, vga->current_mode_string(),
+		str_format(str, "%ux%u %s %ux%u %ux%u (%s rendering)",
+			vm.imgw, vm.imgh, vga->current_video_mode_string(),
 			vm.textcols, vm.textrows,
-			vm.cwidth, vm.cheight);
+			vm.cwidth, vm.cheight,
+			vga->current_rendering_mode_string()
+		);
 	} else {
-		str_format(str, "%ux%u %s",
-			vm.imgw, vm.imgh, vga->current_mode_string());
+		str_format(str, "%ux%u %s (%s rendering)",
+			vm.imgw, vm.imgh,
+			vga->current_video_mode_string(),
+			vga->current_rendering_mode_string()
+		);
 	}
 	m_vga.mode->SetInnerRML(str);
 
@@ -427,6 +440,18 @@ void DevStatus::update_vga(bool _force)
 
 	// Status
 	if(m_vga.stats.is_visible || _force) {
+
+		m_vga.stats.enabled_video->SetInnerRML(str_format(str, "%d", vga->gen_regs().video_enable));
+		m_vga.stats.enabled_sr->SetInnerRML(str_format(str, "%d", vga->sequencer().reset.SR));
+		m_vga.stats.enabled_asr->SetInnerRML(str_format(str, "%d", vga->sequencer().reset.ASR));
+		m_vga.stats.enabled_sync->SetClass("led_active", !vga->is_video_disabled());
+
+		auto so = vga->sequencer().clocking.SO;
+		auto ipas = vga->att_ctrl().address.IPAS;
+		m_vga.stats.enabled_so->SetInnerRML(str_format(str, "%d", so));
+		m_vga.stats.enabled_ipas->SetInnerRML(str_format(str, "%d", ipas));
+		m_vga.stats.enabled_data->SetClass("led_active", !so && ipas);
+
 		const VideoStats & stats = vga->stats();
 		m_vga.stats.frame_cnt->SetInnerRML(str_format(str, "%d", stats.frame_cnt));
 

@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2001-2013  The Bochs Project
  * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
@@ -41,9 +42,9 @@ m_bypp(4)
 FrameBuffer::~FrameBuffer()
 {}
 
-void FrameBuffer::clear()
+void FrameBuffer::clear(uint32_t _color)
 {
-	std::fill(m_buffer.begin(), m_buffer.end(), PALETTE_AMASK);
+	std::fill(m_buffer.begin(), m_buffer.end(), _color);
 }
 
 void FrameBuffer::copy_screen_to(uint8_t *_dest, const VideoModeInfo &_mode) const
@@ -223,12 +224,12 @@ void VGADisplay::unregister_sink(int _id)
 	}
 }
 
-void VGADisplay::clear_screen()
+void VGADisplay::clear_screen(uint32_t _color)
 {
-	m_fb.clear();
+	m_fb.clear(_color);
 	if(GUI::instance()->vga_buffering_enabled() || m_buffering) {
 		// TODO is this necessary?
-		m_last_fb.clear();
+		m_last_fb.clear(_color);
 	}
 }
 
@@ -305,6 +306,11 @@ void VGADisplay::set_overscan_color(uint8_t _index)
 	m_s.overscan_color = _index;
 }
 
+uint32_t VGADisplay::overscan_color_rgb() const
+{
+	return m_s.palette[m_color_mode][m_s.overscan_color];
+}
+
 // set_mode()
 //
 // Called when the VGA mode changes.
@@ -313,6 +319,7 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode, const VideoTimings &_timin
 {
 	set_timings(_timings);
 
+	VGAModes oldmode = m_s.mode.mode;
 	m_s.mode = _mode;
 	m_s.valid_mode = true;
 
@@ -353,8 +360,7 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode, const VideoTimings &_timin
 		m_s.mode.overscan.right = 0;
 		m_s.mode.overscan.top = 0;
 		m_s.mode.overscan.bottom = 0;
-
-		clear_screen();
+		clear_screen(overscan_color_rgb());
 	} else {
 		if(m_s.mode.framew > m_s.mode.xres) {
 			unsigned width = m_s.mode.overscan.left + m_s.mode.xres + m_s.mode.overscan.right;
@@ -371,6 +377,9 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode, const VideoTimings &_timin
 			unsigned top_blank = m_s.mode.frameh - height;
 
 			m_s.yoffset = top_blank + m_s.mode.overscan.top;
+		}
+		if(oldmode != m_s.mode.mode) {
+			clear_screen(overscan_color_rgb());
 		}
 	}
 
@@ -723,8 +732,8 @@ unsigned VGADisplay::overscan_screen_line_update(unsigned _img_scanline)
 	}
 
 	// 2 line fills (left and right borders)
-	// per-line rendering allows for special effects,
-	// tho I'm currently not aware of any software/demo using such fx
+	// per-line rendering allows for special effects.
+	// eg.: Megademo by The Space Pigs (1990) renders raster bars in the overscan area.
 
 	const unsigned fbline = m_s.yoffset + _img_scanline;
 	const unsigned fblineN = m_s.yoffset + (m_s.mode.yres - 1);
@@ -733,7 +742,7 @@ unsigned VGADisplay::overscan_screen_line_update(unsigned _img_scanline)
 		return 0;
 	}
 
-	uint32_t color = m_s.palette[m_color_mode][m_s.overscan_color];
+	const uint32_t color = overscan_color_rgb();
 	if(m_s.mode.overscan.left) {
 		int x = m_s.xoffset - m_s.mode.overscan.left;
 		uint32_t *fb_line_ptr = &m_fb[x] + (fbline * m_fb.width());
@@ -798,7 +807,7 @@ unsigned VGADisplay::overscan_screen_update(OverscanBorder _side)
 	assert(y + height <= m_fb.height());
 
 	if(width && height) {
-		uint32_t color = m_s.palette[m_color_mode][m_s.overscan_color];
+		const uint32_t color = overscan_color_rgb();
 		for(int h = 0; h < height; h++) {
 			uint32_t *fb_line_ptr = &m_fb[x] + ((y + h) * m_fb.width());
 			for(int w = 0; w < width; w++, fb_line_ptr++) {
