@@ -279,6 +279,8 @@ public:
 	const VGA_DAC & dac() const { return m_s.dac; }
 
 	bool is_video_disabled();
+	constexpr bool is_video_blanked();
+	constexpr uint32_t get_blank_color();
 
 	double current_scanline();
 	double current_scanline(bool &disp_, bool &hretr_, bool &vretr_);
@@ -323,7 +325,8 @@ protected:
 	unsigned draw_gfx_cga(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
 	unsigned draw_gfx_ega(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
 	unsigned draw_gfx_vga256(unsigned _scanline, uint16_t _scanaddr, std::vector<uint8_t> &line_data_);
-
+	unsigned draw_blank_line(unsigned _scanline);
+	
 	template<class T>
 	static uint32_t s_mem_read(uint32_t _addr, void *_priv);
 	template<class T>
@@ -384,5 +387,16 @@ inline bool VGA::is_video_disabled()
 	// disable sync pulses when vga/video is disabled or the sequencer is in reset mode
 	return (!m_s.gen_regs.video_enable || !m_s.sequencer.reset.SR || !m_s.sequencer.reset.ASR);
 }
+
+constexpr bool VGA::is_video_blanked()
+{
+	return (!m_s.attr_ctrl.address.IPAS || m_s.sequencer.clocking.SO);
+}
+
+constexpr uint32_t VGA::get_blank_color()
+{
+	return (!m_s.sequencer.clocking.SO) ? m_display->overscan_color_rgb() : PALETTE_ENTRY(0,0,0);
+}
+
 
 #endif

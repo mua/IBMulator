@@ -190,16 +190,18 @@ public:
 	void set_overscan_color(uint8_t _index);
 	uint8_t overscan_color() const { return m_s.overscan_color; }
 	uint32_t overscan_color_rgb() const;
+	void screen_fill(uint32_t _color);
+	void screen_line_fill(unsigned _fbline, uint32_t _color);
 	void gfx_screen_line_update(unsigned _fbline, std::vector<uint8_t> &_linedata,
 			uint8_t *_tiles, uint16_t _tiles_count);
 	void gfx_screen_line_update(unsigned _fbline, std::vector<uint8_t> &_linedata);
 	void text_update(uint8_t *_old_text, uint8_t *_new_text,
 			unsigned _cursor_x, unsigned _cursor_y, TextModeInfo *_tm_info);
-	unsigned overscan_screen_line_update(unsigned _img_y);
+	unsigned overscan_screen_line_update(unsigned _img_y, uint32_t _color);
 	enum class OverscanBorder {
 		top, bottom, left, right 
 	};
-	unsigned overscan_screen_update(OverscanBorder _side);
+	unsigned overscan_screen_update(OverscanBorder _side, uint32_t _color);
 	void clear_screen(uint32_t _color = PALETTE_AMASK);
 
 	void copy_screen(uint8_t *_buffer);

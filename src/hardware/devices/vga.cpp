@@ -1466,6 +1466,27 @@ void VGA::clear_screen()
 	m_display->unlock();
 }
 
+unsigned VGA::draw_blank_line(unsigned _scanline)
+{
+	const uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
+	const uint32_t color = get_blank_color();
+
+	unsigned ovsc_pixels = 0;
+	unsigned img_pixels = 0;
+
+	if(is_tile_dirty(fb_y, 0)) {
+		m_display->screen_line_fill(fb_y, color);
+		set_tiles(fb_y, VGA_TILE_CLEAN);
+		img_pixels = m_s.vmode.xres;
+	}
+
+	if(m_s.force_redraw_overs) {
+		ovsc_pixels = m_display->overscan_screen_line_update(fb_y, color);
+	}
+
+	return img_pixels + ovsc_pixels;
+}
+
 unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
 {
 	// Multiplane 16 colour mode, standard EGA/VGA format.
@@ -1475,9 +1496,13 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 	if(_scanline < m_s.timings.vblank_skip || _scanline > m_s.timings.last_vis_sl) {
 		return 0;
 	}
-	
+
+	if(UNLIKELY(is_video_blanked())) {
+		return draw_blank_line(_scanline);
+	}
+
 	const uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
-	
+
 	uint8_t pan;
 	if((_scanline >= m_s.CRTC.latches.line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1)) {
 		pan = 0;
@@ -1485,7 +1510,7 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 		pan = m_s.attr_ctrl.horiz_pel_panning & 0x7;
 	}
 
-	uint16_t tiles_updated = 0;
+	unsigned img_pixels = 0;
 	uint16_t img_x = 0;
 	for(uint16_t tile = 0; tile < m_num_x_tiles; tile++) {
 		if(!m_s.blink_toggle && !is_tile_dirty(fb_y, tile)) {
@@ -1495,11 +1520,6 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 
 		for(uint16_t tile_x = 0; (img_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++,img_x++)
 		{
-			if(UNLIKELY(!m_s.attr_ctrl.address.IPAS || m_s.sequencer.clocking.SO)) {
-				line_data_[img_x] = m_display->overscan_color();
-				continue;
-			}
-
 			uint16_t pixel_x = img_x + pan;
 			uint8_t  bit_no = 7 - (pixel_x % 8);
 			uint16_t byte_offset = _row_addr_cnt + pixel_x / 8;
@@ -1538,9 +1558,9 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 			line_data_[img_x] = DAC_regno;
 		}
 
-		tiles_updated++;
+		img_pixels += VGA_X_TILESIZE;
 	}
-	
+
 	if(m_s.blink_toggle) {
 		m_display->gfx_screen_line_update(fb_y, line_data_);
 		set_tiles(fb_y, VGA_TILE_CLEAN);
@@ -1548,12 +1568,13 @@ unsigned VGA::draw_gfx_ega(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 		m_display->gfx_screen_line_update(fb_y, line_data_, 
 			&m_tile_dirty[uint32_t(fb_y*m_num_x_tiles)], m_num_x_tiles);
 	}
+
 	unsigned ovsc_pixels = 0;
 	if(m_s.force_redraw_overs) {
-		ovsc_pixels = m_display->overscan_screen_line_update(fb_y);
+		ovsc_pixels = m_display->overscan_screen_line_update(fb_y, m_display->overscan_color_rgb());
 	}
-	
-	return tiles_updated * VGA_X_TILESIZE + ovsc_pixels;
+
+	return img_pixels + ovsc_pixels;
 }
 
 unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
@@ -1566,17 +1587,21 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::v
 	if(_scanline < m_s.timings.vblank_skip || _scanline > m_s.timings.last_vis_sl) {
 		return 0;
 	}
-	
+
+	if(UNLIKELY(is_video_blanked())) {
+		return draw_blank_line(_scanline);
+	}
+
 	const uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
-	
+
 	uint8_t pan;
 	if((_scanline >= m_s.CRTC.latches.line_compare) && (m_s.attr_ctrl.attr_mode.PP == 1)) {
 		pan = 0;
 	} else {
 		pan = (m_s.attr_ctrl.horiz_pel_panning >> 1) & 0x3;
 	}
-	
-	uint16_t tiles_updated = 0;
+
+	unsigned img_pixels = 0;
 	uint16_t img_x = 0;
 	for(uint16_t tile = 0; tile < m_num_x_tiles; tile++) {
 		if(!is_tile_dirty(fb_y, tile)) {
@@ -1585,13 +1610,6 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::v
 		}
 		for(uint16_t tile_x = 0; (img_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++, img_x++)
 		{
-			if(UNLIKELY(!m_s.attr_ctrl.address.IPAS || m_s.sequencer.clocking.SO)) {
-				// TODO use a specialized function to fill with a specified color.
-				// TODO when disabled by attribute use overscan, when disabled by sequencer use black.
-				line_data_[img_x] = m_display->overscan_color();
-				continue;
-			}
-
 			uint32_t pixel_x = img_x + pan;
 			uint32_t byte_offset = _row_addr_cnt + (pixel_x / 4);
 			byte_offset = m_s.CRTC.mux_mem_address(byte_offset, 0);
@@ -1610,7 +1628,7 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::v
 			}
 			line_data_[img_x] = DACreg;
 		}
-		tiles_updated++;
+		img_pixels += VGA_X_TILESIZE;
 	}
 	
 	m_display->gfx_screen_line_update(fb_y, line_data_, 
@@ -1618,10 +1636,10 @@ unsigned VGA::draw_gfx_vga256(unsigned _scanline, uint16_t _row_addr_cnt, std::v
 
 	unsigned ovsc_pixels = 0;
 	if(m_s.force_redraw_overs) {
-		ovsc_pixels = m_display->overscan_screen_line_update(fb_y);
+		ovsc_pixels = m_display->overscan_screen_line_update(fb_y, m_display->overscan_color_rgb());
 	}
 
-	return tiles_updated * VGA_X_TILESIZE + ovsc_pixels;
+	return img_pixels + ovsc_pixels;
 }
 
 unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vector<uint8_t> &line_data_)
@@ -1631,6 +1649,10 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 
 	if(_scanline < m_s.timings.vblank_skip || _scanline > m_s.timings.last_vis_sl) {
 		return 0;
+	}
+
+	if(UNLIKELY(is_video_blanked())) {
+		return draw_blank_line(_scanline);
 	}
 
 	uint16_t fb_y = _scanline - m_s.timings.vblank_skip;
@@ -1646,7 +1668,7 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 		line_y = _scanline >> m_s.CRTC.max_scanline.DSC;
 	}
 	
-	uint16_t tiles_updated = 0;
+	unsigned img_pixels = 0;
 	uint16_t dot_x = 0;
 	
 	uint8_t pix_per_byte, bit_per_pix, att_mask;
@@ -1680,11 +1702,6 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 
 		for(uint16_t tile_x = 0; (dot_x < m_s.vmode.imgw) && (tile_x < VGA_X_TILESIZE); tile_x++,dot_x++)
 		{
-			if(UNLIKELY(!m_s.attr_ctrl.address.IPAS || m_s.sequencer.clocking.SO)) {
-				line_data_[dot_x] = m_display->overscan_color();
-				continue;
-			}
-
 			uint32_t pixel_x = dot_x + pan;
 			uint16_t byte_offset = _row_addr_cnt + (pixel_x / (pix_per_byte*planes));
 			byte_offset = m_s.CRTC.mux_mem_address(byte_offset, line_y);
@@ -1696,7 +1713,7 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 
 			line_data_[dot_x] = m_s.attr_ctrl.palette[palette_reg];
 		}
-		tiles_updated++;
+		img_pixels += VGA_X_TILESIZE;
 	}
 	
 	m_display->gfx_screen_line_update(fb_y, line_data_,
@@ -1704,10 +1721,10 @@ unsigned VGA::draw_gfx_cga(unsigned _scanline, uint16_t _row_addr_cnt, std::vect
 
 	unsigned ovsc_pixels = 0;
 	if(m_s.force_redraw_overs) {
-		ovsc_pixels = m_display->overscan_screen_line_update(fb_y);
+		ovsc_pixels = m_display->overscan_screen_line_update(fb_y, m_display->overscan_color_rgb());
 	}
 
-	return tiles_updated * VGA_X_TILESIZE + ovsc_pixels;
+	return img_pixels + ovsc_pixels;
 }
 
 unsigned VGA::gfx_update_thread(int _thread_id, uint16_t _thread_lc)
@@ -1747,7 +1764,19 @@ unsigned VGA::gfx_update_thread(int _thread_id, uint16_t _thread_lc)
 void VGA::text_update()
 {
 	// this version works only if called at frame_end
-	
+
+	if(UNLIKELY(is_video_blanked())) {
+		uint32_t color = get_blank_color();
+		if(m_s.needs_update) {
+			m_display->screen_fill(color);
+		}
+		if(m_s.force_redraw_overs) {
+			m_display->overscan_screen_update(VGADisplay::OverscanBorder::left, color);
+			m_display->overscan_screen_update(VGADisplay::OverscanBorder::right, color);
+		}
+		return;
+	}
+
 	if((m_s.vmode.textrows * m_s.CRTC.latches.line_offset) > (1 << 17)) {
 		PDEBUGF(LOG_V0, LOG_VGA, "update(): text mode: out of memory\n");
 		return;
@@ -1788,11 +1817,7 @@ void VGA::text_update()
 		tm_info.h_panning &= 0x07;
 	}
 
-	if(LIKELY(m_s.attr_ctrl.address.IPAS && !m_s.sequencer.clocking.SO)) {
-		std::memcpy(tm_info.actl_palette, m_s.attr_ctrl.palette, 16);
-	} else {
-		std::memset(tm_info.actl_palette, m_display->overscan_color(), 16);
-	}
+	std::memcpy(tm_info.actl_palette, m_s.attr_ctrl.palette, 16);
 
 	// pass old text snapshot & new VGA memory contents
 	unsigned cursor_address = 2 * m_s.CRTC.latches.cursor_location;
@@ -1811,8 +1836,8 @@ void VGA::text_update()
 	}
 
 	if(m_s.force_redraw_overs) {
-		m_display->overscan_screen_update(VGADisplay::OverscanBorder::left);
-		m_display->overscan_screen_update(VGADisplay::OverscanBorder::right);
+		m_display->overscan_screen_update(VGADisplay::OverscanBorder::left, m_display->overscan_color_rgb());
+		m_display->overscan_screen_update(VGADisplay::OverscanBorder::right, m_display->overscan_color_rgb());
 	}
 }
 
@@ -1995,8 +2020,12 @@ void VGA::vertical_retrace(uint64_t _time)
 	if(!is_video_disabled() && m_s.force_redraw_overs > 0) {
 		unsigned upd_pix = 0;
 		m_display->lock();
-		upd_pix += m_display->overscan_screen_update(VGADisplay::OverscanBorder::top);
-		upd_pix += m_display->overscan_screen_update(VGADisplay::OverscanBorder::bottom);
+		uint32_t overscan_color = m_display->overscan_color_rgb();
+		if(UNLIKELY(is_video_blanked())) {
+			overscan_color = get_blank_color();
+		}
+		upd_pix += m_display->overscan_screen_update(VGADisplay::OverscanBorder::bottom, overscan_color);
+		upd_pix += m_display->overscan_screen_update(VGADisplay::OverscanBorder::top, overscan_color);
 		m_display->unlock();
 		m_cur_upd_pix += upd_pix;
 		m_s.force_redraw_overs--;

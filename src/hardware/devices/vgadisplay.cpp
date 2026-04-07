@@ -360,7 +360,7 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode, const VideoTimings &_timin
 		m_s.mode.overscan.right = 0;
 		m_s.mode.overscan.top = 0;
 		m_s.mode.overscan.bottom = 0;
-		clear_screen(overscan_color_rgb());
+		clear_screen();
 	} else {
 		if(m_s.mode.framew > m_s.mode.xres) {
 			unsigned width = m_s.mode.overscan.left + m_s.mode.xres + m_s.mode.overscan.right;
@@ -379,7 +379,8 @@ void VGADisplay::set_mode(const VideoModeInfo &_mode, const VideoTimings &_timin
 			m_s.yoffset = top_blank + m_s.mode.overscan.top;
 		}
 		if(oldmode != m_s.mode.mode) {
-			clear_screen(overscan_color_rgb());
+			// this clear prevents screen flickering when mode change is triggered before Screen Off
+			clear_screen();
 		}
 	}
 
@@ -395,6 +396,43 @@ void VGADisplay::set_timings(const VideoTimings &_timings)
 	if(VGA_MAX_HFREQ > 0.0 && (_timings.hfreq>VGA_MAX_HFREQ+0.5 || _timings.hfreq<VGA_MAX_HFREQ-0.5)) {
 		PDEBUGF(LOG_V1, LOG_VGA, "frequency (%.2fkHz) out of range\n", _timings.hfreq);
 	}
+}
+
+// screen_fill()
+//
+// Fills the image (framebuffer) area of the screen
+//
+// _color: RGBA value to use for the fill.
+void VGADisplay::screen_fill(uint32_t _color)
+{
+	if(!m_s.valid_mode) {
+		return;
+	}
+
+	uint32_t *fb_line_ptr = &m_fb[0] + (m_s.yoffset * m_fb.width());
+	for(unsigned y = 0; y < m_s.mode.yres; y++) {
+		std::fill(fb_line_ptr, fb_line_ptr+m_s.mode.xres, _color);
+		fb_line_ptr += m_fb.width();
+	}
+}
+
+// screen_fill()
+//
+// Fills a single line of the image (framebuffer) area of the screen
+//
+// _fbline: the line to fill, where 0 is the first line of the display area.
+// _color: RGBA value to use for the fill.
+void VGADisplay::screen_line_fill(unsigned _fbline, uint32_t _color)
+{
+	if(!m_s.valid_mode) {
+		return;
+	}
+	const unsigned fbline = _fbline + m_s.yoffset;
+	if(fbline >= m_s.mode.frameh) {
+		return;
+	}
+	uint32_t *fb_line_ptr = &m_fb[0] + (fbline * m_fb.width());
+	std::fill(fb_line_ptr, fb_line_ptr+m_s.mode.xres, _color);
 }
 
 // gfx_screen_line_update()
@@ -725,7 +763,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 	m_s.prev_cursor_y = _cursor_y;
 }
 
-unsigned VGADisplay::overscan_screen_line_update(unsigned _img_scanline)
+unsigned VGADisplay::overscan_screen_line_update(unsigned _img_scanline, uint32_t _color)
 {
 	if(!m_s.valid_mode || !m_s.mode.overscan.present) {
 		return 0;
@@ -742,25 +780,24 @@ unsigned VGADisplay::overscan_screen_line_update(unsigned _img_scanline)
 		return 0;
 	}
 
-	const uint32_t color = overscan_color_rgb();
 	if(m_s.mode.overscan.left) {
 		int x = m_s.xoffset - m_s.mode.overscan.left;
 		uint32_t *fb_line_ptr = &m_fb[x] + (fbline * m_fb.width());
 		for(int w = 0; w < m_s.mode.overscan.left; w++, fb_line_ptr++) {
-			*fb_line_ptr = color;
+			*fb_line_ptr = _color;
 		}
 	}
 	if(m_s.mode.overscan.right) {
 		int x = m_s.xoffset + m_s.mode.xres;
 		uint32_t *fb_line_ptr = &m_fb[x] + (fbline * m_fb.width());
 		for(int w = 0; w < m_s.mode.overscan.right; w++, fb_line_ptr++) {
-			*fb_line_ptr = color;
+			*fb_line_ptr = _color;
 		}
 	}
 	return m_s.mode.overscan.left + m_s.mode.overscan.right;
 }
 
-unsigned VGADisplay::overscan_screen_update(OverscanBorder _side)
+unsigned VGADisplay::overscan_screen_update(OverscanBorder _side, uint32_t _color)
 {
 	if(!m_s.valid_mode || !m_s.mode.overscan.present) {
 		return 0;
@@ -807,11 +844,10 @@ unsigned VGADisplay::overscan_screen_update(OverscanBorder _side)
 	assert(y + height <= m_fb.height());
 
 	if(width && height) {
-		const uint32_t color = overscan_color_rgb();
 		for(int h = 0; h < height; h++) {
 			uint32_t *fb_line_ptr = &m_fb[x] + ((y + h) * m_fb.width());
 			for(int w = 0; w < width; w++, fb_line_ptr++) {
-				*fb_line_ptr = color;
+				*fb_line_ptr = _color;
 			}
 		}
 		return width * height;
