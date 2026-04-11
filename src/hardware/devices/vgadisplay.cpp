@@ -409,7 +409,7 @@ void VGADisplay::screen_fill(uint32_t _color)
 		return;
 	}
 
-	uint32_t *fb_line_ptr = &m_fb[0] + (m_s.yoffset * m_fb.width());
+	uint32_t *fb_line_ptr = &m_fb[m_s.xoffset] + (m_s.yoffset * m_fb.width());
 	for(unsigned y = 0; y < m_s.mode.yres; y++) {
 		std::fill(fb_line_ptr, fb_line_ptr+m_s.mode.xres, _color);
 		fb_line_ptr += m_fb.width();
@@ -431,7 +431,7 @@ void VGADisplay::screen_line_fill(unsigned _fbline, uint32_t _color)
 	if(fbline >= m_s.mode.frameh) {
 		return;
 	}
-	uint32_t *fb_line_ptr = &m_fb[0] + (fbline * m_fb.width());
+	uint32_t *fb_line_ptr = &m_fb[m_s.xoffset] + (fbline * m_fb.width());
 	std::fill(fb_line_ptr, fb_line_ptr+m_s.mode.xres, _color);
 }
 
