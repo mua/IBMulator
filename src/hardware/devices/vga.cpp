@@ -606,9 +606,14 @@ void VGA::update_video_mode()
 	// careful: last_vis_sl is 0-based
 	m_s.timings.ns.frame_end = (m_s.timings.last_vis_sl * m_s.timings.ns.htotal) + m_s.timings.ns.htotal;
 
-	m_s.timings.blank.top = m_s.timings.vbend - m_s.timings.vrend;
-	m_s.timings.overscan.top = m_s.timings.vtotal - m_s.timings.vbend;
-	if(m_s.timings.vrstart >= m_s.timings.vbstart) {
+	if(m_s.timings.vbend >= m_s.timings.vrend) {
+		m_s.timings.blank.top = m_s.timings.vbend - m_s.timings.vrend;
+		m_s.timings.overscan.top = m_s.timings.vtotal - m_s.timings.vbend;
+	} else {
+		m_s.timings.overscan.top = m_s.timings.vtotal - m_s.timings.vrend;
+		m_s.timings.blank.top = 0;
+	}
+	if(m_s.timings.vrstart >= m_s.timings.vbstart && m_s.timings.vrend <= m_s.timings.vbend) {
 		m_s.timings.overscan.bottom = m_s.timings.vbstart - m_s.timings.vdend;
 		m_s.timings.blank.bottom = m_s.timings.vrstart - m_s.timings.vbstart;
 	} else {
