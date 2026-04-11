@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2025  Marco Bortolin
+ * Copyright (C) 2016-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -30,6 +30,7 @@ class SysDebugger386 final : public SysDebugger
 {
 private:
 	struct s_386core {
+		Rml::Element *csbig;
 		Rml::Element *rf,*vm;
 		Rml::Element *pe,*pg,*ts;
 		Rml::Element *fs,*gs;

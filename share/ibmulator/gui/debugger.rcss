@@ -75,6 +75,11 @@ td.t
 	width: 40dp;
 }
 
+#CSbig
+{
+	width: 20dp;
+}
+
 #flags td
 {
 	width: 20dp;

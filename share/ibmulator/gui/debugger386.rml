@@ -41,7 +41,7 @@
 
 			<div id="segmentregs">
 				<table class="default">
-				<tr><th>CS</th><td id="CS"></td><td id="CSbase"></td><td id="CSlimit"></td><td class="t"><button id="cs_dump"><btnicon /></button></td></tr>
+				<tr><th>CS</th><td id="CS"></td><td id="CSbase"></td><td id="CSlimit"></td><td id="CSbig"></td><td class="t"><button id="cs_dump"><btnicon /></button></td></tr>
 				<tr><th>DS</th><td id="DS"></td><td id="DSbase"></td><td id="DSlimit"></td><td class="t"><button id="ds_dump"><btnicon /></button></td></tr>
 				<tr><th>SS</th><td id="SS"></td><td id="SSbase"></td><td id="SSlimit"></td><td class="t"><button id="ss_dump"><btnicon /></button></td></tr>
 				<tr><th>ES</th><td id="ES"></td><td id="ESbase"></td><td id="ESlimit"></td><td class="t"><button id="es_dump"><btnicon /></button></td></tr>

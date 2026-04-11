@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -64,6 +64,8 @@ SysDebugger386::SysDebugger386(GUI *_gui, Machine *_machine, Rml::Element *_butt
 void SysDebugger386::create()
 {
 	SysDebugger::create();
+
+	m_386core.csbig = get_element("CSbig");
 
 	m_386core.rf = get_element("RF");
 	m_386core.vm = get_element("VM");
@@ -155,6 +157,8 @@ void SysDebugger386::update()
 	m_386core.pe->SetInnerRML(format_bit(CR0_PE));
 	m_386core.ts->SetInnerRML(format_bit(CR0_TS));
 	m_386core.pg->SetInnerRML(format_bit(CR0_PG));
+
+	m_386core.csbig->SetInnerRML(REG_CS.desc.big ? "32" : "16");
 
 	m_386core.fs->SetInnerRML(format_hex16(REG_FS.sel.value));
 	m_386core.gs->SetInnerRML(format_hex16(REG_GS.sel.value));
