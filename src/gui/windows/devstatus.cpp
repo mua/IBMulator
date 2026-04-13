@@ -616,7 +616,11 @@ void DevStatus::update_vga(bool _force)
 		m_vga.crtc.v.ms.total->SetInnerRML(str_format("%.3f", vt.ns.vtotal/1000000.0));
 		m_vga.crtc.v.ms.disp->SetInnerRML(str_format("%.3f", vt.ns.vdend/1000000.0));
 		// front porch
-		m_vga.crtc.v.ms.bblank->SetInnerRML(str_format("%.3f", (vt.ns.vrstart - vt.ns.vdend)/1000000.0));
+		if(vt.ns.vrstart > vt.ns.vdend) {
+			m_vga.crtc.v.ms.bblank->SetInnerRML(str_format("%.3f", (vt.ns.vrstart - vt.ns.vdend)/1000000.0));
+		} else {
+			m_vga.crtc.v.ms.bblank->SetInnerRML("0");
+		}
 		if(vt.overscan.bottom) {
 			m_vga.crtc.v.ms.bborder->SetInnerRML(str_format("%.3f", (vt.ns.vbstart - vt.ns.vdend)/1000000.0));
 		} else {
