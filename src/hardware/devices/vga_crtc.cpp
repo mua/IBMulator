@@ -172,6 +172,11 @@ void VGA_CRTC::latch_line_offset()
 void VGA_CRTC::latch_line_compare()
 {
 	latches.line_compare = (line_compare) | (overflow.LC8<<8) | (max_scanline.LC9<<9);
+	if(LIKELY(latches.line_compare > 0)) {
+		// if line is 0 it stays so, otherwise it's offset by 1.
+		// that means it's not possible to split the screen at line 1.
+		latches.line_compare++;
+	}
 }
 
 void VGA_CRTC::latch_vretrace_start()

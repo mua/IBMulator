@@ -1945,7 +1945,11 @@ void VGA::frame_start(uint64_t _time)
 		if(!is_video_disabled()) {
 			// enable per-line rendering, 1 update for every line at hrstart
 			m_s.scanline = 0;
-			m_s.mem_addr_counter = m_s.CRTC.latches.start_address;
+			if(LIKELY(m_s.CRTC.latches.line_compare > 0)) {
+				m_s.mem_addr_counter = m_s.CRTC.latches.start_address;
+			} else {
+				m_s.mem_addr_counter = 0;
+			}
 
 			g_machine.set_timer_callback(m_timer_id, std::bind(&VGA::horizontal_retrace,this,_1), VGA_HORIZONTAL_RETRACE);
 			g_machine.activate_timer(m_timer_id, m_s.timings.ns.hrstart, m_s.timings.ns.htotal, true);
