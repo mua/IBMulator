@@ -146,7 +146,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";       normal_scale: The viewport's scaling mode (normal/compact GUI modes).\n"
 ";                     Possible values: fill, integer.\n"
 ";                         fill: scale to fill the available area.\n"
-";                      integer: scale only at integer multiples.\n"
+";                      integer: scale only at integer multiples of the framebuffer (disabled with overscan).\n"
 ";      normal_aspect: Aspect ratio of the viewport (normal/compact GUI modes).\n"
 ";                     Possible values: W:H, vga, area, original.\n"
 ";                           W:H: use the specified aspect ratio (eg. 4:3, 16:10, ...).\n"

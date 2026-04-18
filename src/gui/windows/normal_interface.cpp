@@ -99,11 +99,7 @@ void NormalInterface::create()
 			m_aspect_mode = DISPLAY_ASPECT_FIXED;
 		}
 	}
-	m_scale_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_SCALE,
-		GUI::ms_display_scale);
-	if(m_scale_mode == DISPLAY_SCALE_1X || m_scale_mode == DISPLAY_SCALE_INTEGER) {
-		m_scale_integer = true;
-	}
+
 	int w,h;
 	// try to parse the width as a scaling factor
 	// window auto-resizing mode (undocumented and incomplete)
@@ -238,6 +234,7 @@ void NormalInterface::container_size_changed(int _width, int _height)
 		if(m_cur_zoom == ZoomMode::COMPACT) {
 			yt = (1.0 - ys) / 2.0;
 		}
+		m_screen->params.vga.pmat = mat4_ortho<float>(0.0, 1.0, 1.0, 0.0, 0.0, 1.0);
 	}
 
 	m_screen->params.viewport_size.x = _width;
@@ -307,6 +304,9 @@ void NormalInterface::update()
 			m_screen->display()->clear_dimension_updated();
 		}
 		m_screen->display()->unlock();
+	} else if(m_config_changed) {
+		container_size_changed(m_gui->window_width(), m_gui->window_height());
+		m_config_changed = false;
 	}
 
 	if(m_machine->is_paused() && m_led_pause==false) {
@@ -321,6 +321,22 @@ void NormalInterface::update()
 void NormalInterface::config_changed(bool _startup)
 {
 	Interface::config_changed(_startup);
+
+	m_scale_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_NORMAL_SCALE, GUI::ms_display_scale);
+	if(m_scale_mode == DISPLAY_SCALE_1X || m_scale_mode == DISPLAY_SCALE_INTEGER) {
+		m_scale_integer = true;
+	}
+
+	bool use_overscan = g_program.config().get_bool_or_default(DISPLAY_SECTION, DISPLAY_OVERSCAN);
+	if(use_overscan) {
+		if(m_scale_integer) {
+			PWARNF(LOG_V0, LOG_GUI, "Integer scaling is not available when display overscan emulation is enabled.\n");
+		}
+		m_scale_mode = DISPLAY_SCALE_FILL;
+		m_scale_integer = false;
+	}
+
+	m_config_changed = true;
 
 	m_drive_blocks.clear();
 

@@ -45,6 +45,7 @@ private:
 	unsigned m_window_scaling = 0;
 	unsigned m_scale_mode = 0;
 	bool     m_scale_integer = false;
+	bool     m_config_changed = true;
 
 	Rml::Element *m_main_interface = nullptr;
 	Rml::Element *m_sysunit = nullptr;
