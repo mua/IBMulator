@@ -480,10 +480,10 @@ void DMA::set_DRQ(unsigned channel, bool val)
 		dma_roof = dma_base + (m_s.dma[ma_sl].chan[channel].base_count << ma_sl);
 	}
 	if(channel!=0 && ((dma_base & (0x7fff0000 << ma_sl)) != (dma_roof & (0x7fff0000 << ma_sl)))) {
-		PERRF(LOG_DMA, "dma_base = 0x%08x\n", dma_base);
-		PERRF(LOG_DMA, "dma_base_count = 0x%08x\n", m_s.dma[ma_sl].chan[channel].base_count);
-		PERRF(LOG_DMA, "dma_roof = 0x%08x\n", dma_roof);
-		PERRF(LOG_DMA, "request outside %dk boundary\n", 64 << ma_sl);
+		PDEBUGF(LOG_V0, LOG_DMA, "dma_base = 0x%08x\n", dma_base);
+		PDEBUGF(LOG_V0, LOG_DMA, "dma_base_count = 0x%08x\n", m_s.dma[ma_sl].chan[channel].base_count);
+		PDEBUGF(LOG_V0, LOG_DMA, "dma_roof = 0x%08x\n", dma_roof);
+		PDEBUGF(LOG_V0, LOG_DMA, "request outside %dk boundary\n", 64 << ma_sl);
 		return;
 	}
 
