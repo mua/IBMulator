@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2024  Marco Bortolin
+ * Copyright (C) 2020-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -596,6 +596,7 @@ void SBlaster::dsp_reset()
 	m_s.dac.change_format(AUDIO_FORMAT_U8);
 	m_s.dac.speaker = false;
 	m_s.dac.irq_count = 0;
+	m_s.dac.newdata = true;
 
 	update_volumes();
 }
