@@ -462,6 +462,7 @@ void GUI::init_rmlui()
 		throw std::exception();
 	}
 	Rml::LoadFontFace("fonts/ProFontWindows.ttf");
+	Rml::LoadFontFace("fonts/ProFontWindows-Bold.ttf");
 	Rml::LoadFontFace("fonts/Nouveau_IBM.ttf");
 	Rml::LoadFontFace("fonts/Ubuntu-Regular.ttf");
 	Rml::LoadFontFace("fonts/Ubuntu-Bold.ttf");

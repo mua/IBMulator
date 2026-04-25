@@ -25,6 +25,7 @@ input.radio
 
 tab
 {
+	font-weight: bold;
 	display: inline-block;
 	padding-left: 8dp;
 	padding-right: 6dp;
