@@ -263,13 +263,13 @@ void OPL::OPLTimer::reset()
 
 void OPL::OPLTimer::toggle(bool _start)
 {
-	if(_start) {
+	if(!_start) {
+		g_machine.deactivate_timer(index);
+	} else if(!g_machine.is_timer_active(index)) {
 		uint32_t time = (256 - value) * increment;
 		assert(time);
 		g_machine.activate_timer(index, uint64_t(time)*1_us, false);
 		PDEBUGF(LOG_V2, LOG_AUDIO, "OPLTimer: T%u start, time=%uus\n", id+1, time);
-	} else {
-		g_machine.deactivate_timer(index);
 	}
 }
 
