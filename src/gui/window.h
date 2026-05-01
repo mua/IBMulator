@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -143,12 +143,13 @@ protected:
 	void ProcessEvent(Rml::Event &) override;
 	void OnAttach(Rml::Element* _element) override;
 	virtual event_map_t & get_event_map() { return ms_event_map; }
-	Rml::Element * get_element(const std::string &_id);
+	Rml::Element * get_element(const std::string &_id) const;
 	std::string create_id();
 	void add_events();
 	using AriaEventsExclusions = std::vector<std::pair<std::string, std::string>>;
 	void add_aria_events(Rml::Element *_elem, const AriaEventsExclusions &_exclusions);
 	Rml::ElementPtr create_button();
+	std::array<float,4> get_content_position() const;
 
 	void enable_handlers(bool _enabled) { m_handlers_enabled = _enabled; }
 	void register_handler(Rml::Element *_target, const std::string &_event_type, bool _is_targeted, event_handler_t _fn);

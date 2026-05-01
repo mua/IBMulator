@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -223,7 +223,7 @@ void Window::update()
 	}
 }
 
-Rml::Element * Window::get_element(const std::string &_id)
+Rml::Element * Window::get_element(const std::string &_id) const
 {
 	assert(m_wnd);
 	Rml::Element *el = m_wnd->GetElementById(_id);
@@ -457,6 +457,25 @@ std::string Window::get_form_input_value(Rml::Event &_ev)
 Rml::ElementPtr Window::create_button()
 {
 	return m_wnd->CreateElement("button");
+}
+
+std::array<float,4> Window::get_content_position() const
+{
+	std::array<float,4> pos{0,0,0,0};
+	try {
+		Rml::Element *content = get_element("content");
+		pos[0] += content->GetProperty(Rml::PropertyId::Top)->Get<float>();
+		pos[1] += content->GetProperty(Rml::PropertyId::Right)->Get<float>();
+		pos[2] += content->GetProperty(Rml::PropertyId::Bottom)->Get<float>();
+		pos[3] += content->GetProperty(Rml::PropertyId::Left)->Get<float>();
+		pos[0] += content->GetProperty(Rml::PropertyId::MarginTop)->Get<float>();
+		pos[1] += content->GetProperty(Rml::PropertyId::MarginRight)->Get<float>();
+		pos[2] += content->GetProperty(Rml::PropertyId::MarginBottom)->Get<float>();
+		pos[3] += content->GetProperty(Rml::PropertyId::MarginLeft)->Get<float>();
+	} catch(std::exception &) {
+		PDEBUGF(LOG_V0, LOG_GUI, "'content' window element not found\n");
+	}
+	return pos;
 }
 
 Rml::Element * Window::get_button_element(Rml::Event &_ev)

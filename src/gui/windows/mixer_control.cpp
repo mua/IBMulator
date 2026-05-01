@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2025  Marco Bortolin
+ * Copyright (C) 2023-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -328,6 +328,15 @@ void MixerControl::config_changed(bool _startup)
 		max_w_dp += sfx_count * block_w_dp;
 	}
 	max_w_dp += right;
+
+	auto content = get_content_position();
+	max_w_dp += content[1] + content[3];
+
+	float min_w_dp = m_wnd->GetProperty(Rml::PropertyId::MinWidth)->Get<float>();
+	if(min_w_dp > max_w_dp) {
+		// without this constrain there's a segfault with RmlUi ver. 6.2 and below
+		max_w_dp = min_w_dp;
+	}
 
 	m_wnd->SetProperty("max-width", str_format("%gdp", max_w_dp));
 
