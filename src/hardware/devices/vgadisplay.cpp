@@ -82,6 +82,9 @@ VGADisplay::VGADisplay()
 
 	m_s.valid_mode = true;
 
+	m_s.xoffset = 0;
+	m_s.yoffset = 0;
+
 	m_s.prev_cursor_x = 0;
 	m_s.prev_cursor_y = 0;
 
@@ -126,8 +129,6 @@ VGADisplay::VGADisplay()
 	clear_screen();
 	set_fb_updated();
 	set_dimension_updated();
-	
-	m_buffering = false;
 }
 
 VGADisplay::~VGADisplay()
