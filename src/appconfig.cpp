@@ -575,7 +575,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 	} },
 	{ DISPLAY_SECTION, {
 		{ DISPLAY_TYPE,             MACHINE_CONFIG, PUBLIC_CFGKEY, "color"                       },
-		{ DISPLAY_OVERSCAN,         MACHINE_CONFIG, PUBLIC_CFGKEY, "no"                          },
+		{ DISPLAY_OVERSCAN,         MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"                         },
 		{ DISPLAY_NORMAL_SCALE,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "fill"                        },
 		{ DISPLAY_NORMAL_ASPECT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "4:3"                         },
 		{ DISPLAY_FILTER,           PROGRAM_CONFIG, PUBLIC_CFGKEY, "bilinear"                    },
