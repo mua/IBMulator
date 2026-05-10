@@ -156,6 +156,7 @@ private:
 	
 	ColorMode m_color_mode = COLOR_MODE_RGB;
 	bool m_monochrome = false;
+	bool m_cursor_invert = false;
 
 public:
 
@@ -220,6 +221,7 @@ public:
 	void clear_palette_updated() { m_palette_updated = false; }
 	void copy_palette(SDL_Surface *_dest) const;
 
+	void set_cursor_invert(bool _invert) { m_cursor_invert = _invert; }
 	void set_color_mode(ColorMode _mode) { m_color_mode = _mode; }
 	ColorMode color_mode() const { return m_color_mode; }
 	void set_monochrome(bool _value) { m_monochrome = _value; }

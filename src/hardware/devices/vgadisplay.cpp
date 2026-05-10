@@ -668,7 +668,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 				if(m_s.charmap_select) {
 					map = (_new_text[1] & 0x08);
 				}
-				bool invert = ((offset == curs) && (cursor_visible));
+				bool on_cursor = ((offset == curs) && (cursor_visible));
 				bool gfxcharw9 = ((_tm_info->line_graphics) && ((_new_text[0] & 0xE0) == 0xC0));
 
 				// Display this one char
@@ -692,16 +692,18 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 						font_row <<= m_s.h_panning;
 					}
 					uint8_t fontpixels = cfwidth;
-					uint16_t mask;
-					if((invert) && (fontline >= _tm_info->cs_start) && (fontline <= _tm_info->cs_end)) {
-						mask = 0x100;
+					uint16_t mask = 0x0000;
+					bool show_cursor = false;
+					if((on_cursor) && (fontline >= _tm_info->cs_start) && (fontline <= _tm_info->cs_end)) {
+						show_cursor = !m_cursor_invert;
+						mask = !m_cursor_invert ? 0x0100 : 0x0000;
 					} else {
-						mask = 0x00;
+						mask = 0x0100;
 					}
 					do {
-						uint32_t color = fgcolor;
-						if((font_row & 0x100) == mask) {
-							color = bgcolor;
+						uint32_t color = bgcolor;
+						if(show_cursor || (font_row & 0x0100) == mask) {
+							color = fgcolor;
 						}
 						*buf = color;
 						if(_tm_info->double_dot) {
