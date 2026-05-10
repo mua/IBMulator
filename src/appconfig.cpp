@@ -938,7 +938,7 @@ int AppConfig::get_int_or_default(const std::string &section, const std::string 
 		value = try_int(section, name);
 	} catch(std::exception &) {
 		// assume the user's value string is not a valid integer
-		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is not a valid integer, using default: %d\n",
+		PWARNF(LOG_V1, LOG_PROGRAM, "The value specified in '[%s]:%s' is not a valid integer, using default: %d\n",
 				section.c_str(), name.c_str(), def);
 		value = def;
 	}
@@ -953,7 +953,7 @@ double AppConfig::get_real_or_default(const std::string &section, const std::str
 	try {
 		value = try_real(section, name);
 	} catch(std::exception &) {
-		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is not a valid real number, using default: %.2f\n",
+		PWARNF(LOG_V1, LOG_PROGRAM, "The value specified in '[%s]:%s' is not a valid real number, using default: %.2f\n",
 				section.c_str(), name.c_str(), def);
 		value = def;
 	}
@@ -968,7 +968,7 @@ int AppConfig::get_int_or_default(const std::string &section, const std::string 
 		int def = get_int_default(section, name);
 		// the default must be within range
 		assert(value != def);
-		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is out of range, using default: %d\n",
+		PWARNF(LOG_V1, LOG_PROGRAM, "The value specified in '[%s]:%s' is out of range, using default: %d\n",
 				section.c_str(), name.c_str(), def);
 		return def;
 	}
@@ -983,7 +983,7 @@ double AppConfig::get_real_or_default(const std::string &section, const std::str
 	if(value < min || value > max) {
 		double def = get_real_default(section, name);
 		assert(value != def);
-		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is out of range, using default: %.2f\n",
+		PWARNF(LOG_V1, LOG_PROGRAM, "The value specified in '[%s]:%s' is out of range, using default: %.2f\n",
 				section.c_str(), name.c_str(), def);
 		return def;
 	}
@@ -997,7 +997,7 @@ bool AppConfig::get_bool_or_default(const std::string &section, const std::strin
 		return try_bool(section, name);
 	} catch(std::exception &) {
 		bool def = get_bool_default(section, name);
-		PERRF(LOG_PROGRAM, "The value specified in '[%s]:%s' is not a valid boolean, using default: %s\n",
+		PWARNF(LOG_V1, LOG_PROGRAM, "The value specified in '[%s]:%s' is not a valid boolean, using default: %s\n",
 				section.c_str(), name.c_str(), def ? "yes" : "no");
 		return def;
 	}
