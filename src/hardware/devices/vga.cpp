@@ -168,6 +168,17 @@ void VGA::config_changed()
 	m_use_overscan = g_program.config().get_bool_or_default(DISPLAY_SECTION, DISPLAY_OVERSCAN);
 
 	m_bugs.ps_bit = g_program.config().get_bool_or_default(VGA_SECTION, VGA_PS_BIT_BUG);
+
+	int blink_period = g_program.config().get_int_or_default(DISPLAY_SECTION, DISPLAY_BLINK_PERIOD);
+	m_blink_rate = 0;
+	if(blink_period < 0) {
+		m_blink_rate = VGA_BLINK_RATE;
+		PINFOF(LOG_V0, LOG_VGA, "Invalid blink period, using default %d\n", VGA_BLINK_RATE * 2);
+	} else if(blink_period < 2) {
+		PINFOF(LOG_V0, LOG_VGA, "Blink period below 2, blinking disabled.\n");
+	} else {
+		m_blink_rate = blink_period >> 1;
+	}
 }
 
 void VGA::remove()
@@ -197,8 +208,6 @@ void VGA::reset(unsigned _type)
 
 		m_s = {};
 
-		m_s.blink_counter = VGA_BLINK_COUNTER;
-		
 		// Mode 3+ 80x25,9x16,70Hz,720x400
 		m_s.gen_regs.misc_output.IOS = 1;
 		m_s.gen_regs.misc_output.ERAM = 1;
@@ -1929,9 +1938,9 @@ void VGA::frame_start(uint64_t _time)
 
 	// update cursor/blinking status for this frame
 	m_s.blink_toggle = false;
-	m_s.blink_counter--;
-	if(m_s.blink_counter == 0) {
-		m_s.blink_counter = VGA_BLINK_COUNTER;
+	if(!m_blink_rate) {
+		m_s.blink_visible = true;
+	} else if(m_stats.frame_cnt % m_blink_rate == 0) {
 		if((m_s.vmode.mode == VGA_M_TEXT) || (m_s.attr_ctrl.attr_mode.EB)) {
 			m_s.blink_toggle = true;
 			m_s.blink_visible = !m_s.blink_visible;

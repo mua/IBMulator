@@ -195,6 +195,7 @@ public:
 #define DISPLAY_SATURATION       "saturation"
 #define DISPLAY_COLOR_MODE       "color_mode"
 #define DISPLAY_CURSOR_INVERT    "cursor_invert"
+#define DISPLAY_BLINK_PERIOD     "blink_period"
 #define DISPLAY_AMBIENT          "ambient_light"
 #define DISPLAY_SAMPLERS_MODE    "samplers_mode"
 #define DISPLAY_SHADER_INPUT     "shader_input_size"
