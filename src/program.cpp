@@ -821,7 +821,9 @@ void Program::parse_arguments(int argc, char** argv)
 					}
 				}
 				if(!state.empty()) {
-					restore_state({state, "","",0,0}, nullptr, nullptr);
+					restore_state({state, "","",0,0}, [&](){
+						m_machine->cmd_resume(false);
+					}, nullptr);
 				}
 				break;
 			}
