@@ -327,10 +327,10 @@ void NormalInterface::config_changed(bool _startup)
 		m_scale_integer = true;
 	}
 
-	bool use_overscan = g_program.config().get_bool_or_default(DISPLAY_SECTION, DISPLAY_OVERSCAN);
+	bool use_overscan = g_program.config().get_bool_or_default(VGA_SECTION, VGA_OVERSCAN);
 	if(use_overscan) {
 		if(m_scale_integer) {
-			PWARNF(LOG_V0, LOG_GUI, "Integer scaling is not available when display overscan emulation is enabled.\n");
+			PWARNF(LOG_V0, LOG_GUI, "Integer scaling is not available when VGA overscan emulation is enabled.\n");
 		}
 		m_scale_mode = DISPLAY_SCALE_FILL;
 		m_scale_integer = false;

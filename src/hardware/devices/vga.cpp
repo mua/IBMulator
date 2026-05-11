@@ -165,7 +165,7 @@ void VGA::config_changed()
 		} catch(std::exception &e) {}
 	}
 	
-	m_use_overscan = g_program.config().get_bool_or_default(DISPLAY_SECTION, DISPLAY_OVERSCAN);
+	m_use_overscan = g_program.config().get_bool_or_default(VGA_SECTION, VGA_OVERSCAN);
 
 	m_bugs.ps_bit = g_program.config().get_bool_or_default(VGA_SECTION, VGA_PS_BIT_BUG);
 

@@ -184,7 +184,6 @@ public:
 
 #define DISPLAY_SECTION          "display"
 #define DISPLAY_TYPE             "type"
-#define DISPLAY_OVERSCAN         "overscan"
 #define DISPLAY_NORMAL_SCALE     "normal_scale"
 #define DISPLAY_NORMAL_ASPECT    "normal_aspect"
 #define DISPLAY_NORMAL_SHADER    "normal_shader"
@@ -224,6 +223,7 @@ public:
 
 #define VGA_SECTION             "vga"
 #define VGA_ROM                 "rom"
+#define VGA_OVERSCAN            "overscan"
 #define VGA_PS_BIT_BUG          "ps_bit_bug"
 
 #define DRIVES_SECTION          "drives"

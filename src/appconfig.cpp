@@ -142,7 +142,6 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 
 		{ DISPLAY_SECTION,
 ";               type: Possible values: color, monochrome.\n"
-";           overscan: Enable overscan borders emulation.\n"
 ";       normal_scale: The viewport's scaling mode (normal/compact GUI modes).\n"
 ";                     Possible values: fill, integer.\n"
 ";                         fill: scale to fill the available area.\n"
@@ -200,6 +199,7 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 "; Video interface card configuration:\n"
 ";        rom: Path to a binary ROM file to load.\n"
 ";              The PS/1 BIOS won't use it but other BIOSes might require it.\n"
+";   overscan: Enable overscan borders emulation.\n"
 "; ps_bit_bug: Enable the Palette Size (PS) bit bug emulation.\n"
 ";              This VGA Attribute Controller's bit is not used in 256-color mode, except in the ET4000AX rev. TC6058AF\n"
 ";              (req. by Copper '92 demo).\n"
@@ -575,7 +575,6 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 	} },
 	{ DISPLAY_SECTION, {
 		{ DISPLAY_TYPE,             MACHINE_CONFIG, PUBLIC_CFGKEY, "color"                       },
-		{ DISPLAY_OVERSCAN,         MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"                         },
 		{ DISPLAY_NORMAL_SCALE,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "fill"                        },
 		{ DISPLAY_NORMAL_ASPECT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "4:3"                         },
 		{ DISPLAY_FILTER,           PROGRAM_CONFIG, PUBLIC_CFGKEY, "bilinear"                    },
@@ -605,6 +604,7 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 	} },
 	{ VGA_SECTION, {
 		{ VGA_ROM,        MACHINE_CONFIG, PUBLIC_CFGKEY, ""   },
+		{ VGA_OVERSCAN,   MACHINE_CONFIG, PUBLIC_CFGKEY, "yes"},
 		{ VGA_PS_BIT_BUG, MACHINE_CONFIG, PUBLIC_CFGKEY, "no" },
 	} },
 	{ CMOS_SECTION, {
