@@ -483,7 +483,7 @@ void Interface::config_changed(bool _startup)
 	int color_mode = g_program.config().get_enum(DISPLAY_SECTION, DISPLAY_COLOR_MODE, color_modes);
 	set_vga_color_mode(color_mode, 0);
 
-	vga_display()->set_cursor_invert(g_program.config().get_bool_or_default(DISPLAY_SECTION, DISPLAY_CURSOR_INVERT));
+	vga_display()->set_cursor_invert(g_program.config().get_bool_or_default(VGA_SECTION, VGA_CURSOR_INVERT));
 
 	Window::config_changed(_startup);
 }

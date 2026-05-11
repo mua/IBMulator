@@ -169,10 +169,10 @@ void VGA::config_changed()
 
 	m_bugs.ps_bit = g_program.config().get_bool_or_default(VGA_SECTION, VGA_PS_BIT_BUG);
 
-	m_blink_toggle_rate = VGA_BLINK_RATE / 2;
-	int blink_rate = g_program.config().get_int_or_default(DISPLAY_SECTION, DISPLAY_BLINK_RATE);
+	m_blink_toggle_rate = VGA_DEFAULT_BLINK_RATE / 2;
+	int blink_rate = g_program.config().get_int_or_default(VGA_SECTION, VGA_BLINK_RATE);
 	if(blink_rate < 0) {
-		PINFOF(LOG_V0, LOG_VGA, "Invalid blink rate, using default %d\n", VGA_BLINK_RATE);
+		PINFOF(LOG_V0, LOG_VGA, "Invalid blink rate, using default %d\n", VGA_DEFAULT_BLINK_RATE);
 	} else if(blink_rate < 2) {
 		m_blink_toggle_rate = 0;
 		PINFOF(LOG_V0, LOG_VGA, "Blink rate below 2, blinking disabled.\n");
@@ -180,10 +180,10 @@ void VGA::config_changed()
 		m_blink_toggle_rate = blink_rate / 2;
 	}
 
-	m_cursor_blink_toggle_rate = CURSOR_BLINK_RATE / 2;
-	blink_rate = g_program.config().get_int_or_default(DISPLAY_SECTION, DISPLAY_CURSOR_BLINK_RATE);
+	m_cursor_blink_toggle_rate = CURSOR_DEFAULT_BLINK_RATE / 2;
+	blink_rate = g_program.config().get_int_or_default(VGA_SECTION, VGA_CURSOR_BLINK_RATE);
 	if(blink_rate < 0) {
-		PINFOF(LOG_V0, LOG_VGA, "Invalid cursor blink rate, using default %d\n", CURSOR_BLINK_RATE);
+		PINFOF(LOG_V0, LOG_VGA, "Invalid cursor blink rate, using default %d\n", CURSOR_DEFAULT_BLINK_RATE);
 	} else if(blink_rate < 2) {
 		m_cursor_blink_toggle_rate = 0;
 		PINFOF(LOG_V0, LOG_VGA, "Cursor blink rate below 2, blinking disabled.\n");
