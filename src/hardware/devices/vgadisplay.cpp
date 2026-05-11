@@ -544,13 +544,10 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 		return;
 	}
 
-	bool forceUpdate = false;
-	bool blink_mode = (_tm_info->blink_flags & TEXT_BLINK_MODE) > 0;
-	bool blink_state = (_tm_info->blink_flags & TEXT_BLINK_STATE) > 0;
-	if(blink_mode) {
-		if(_tm_info->blink_flags & TEXT_BLINK_TOGGLE)
-			forceUpdate = true;
-	}
+	bool text_blink_mode = (_tm_info->blink_flags & TEXT_BLINK_MODE) > 0;
+	bool text_blink_state = (_tm_info->blink_flags & TEXT_BLINK_STATE) > 0;
+	bool forceUpdate = (_tm_info->blink_flags & TEXT_BLINK_TOGGLE) > 0;
+
 	if(m_s.charmap_updated) {
 		forceUpdate = true;
 		m_s.charmap_updated = false;
@@ -656,9 +653,9 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 				// Get Foreground/Background pixel colors
 				uint32_t fgcolor = text_palette[_new_text[1] & 0x0F];
 				uint32_t bgcolor;
-				if(blink_mode) {
+				if(text_blink_mode) {
 					bgcolor = text_palette[(_new_text[1] >> 4) & 0x07];
-					if(!blink_state && (_new_text[1] & 0x80)) {
+					if(!text_blink_state && (_new_text[1] & 0x80)) {
 						fgcolor = bgcolor;
 					}
 				} else {
@@ -693,16 +690,16 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 					}
 					uint8_t fontpixels = cfwidth;
 					uint16_t mask = 0x0000;
-					bool show_cursor = false;
-					if((on_cursor) && (fontline >= _tm_info->cs_start) && (fontline <= _tm_info->cs_end)) {
-						show_cursor = !m_cursor_invert;
+					bool draw_cursor = false;
+					if(on_cursor && (fontline >= _tm_info->cs_start) && (fontline <= _tm_info->cs_end)) {
+						draw_cursor = !m_cursor_invert;
 						mask = !m_cursor_invert ? 0x0100 : 0x0000;
 					} else {
 						mask = 0x0100;
 					}
 					do {
 						uint32_t color = bgcolor;
-						if(show_cursor || (font_row & 0x0100) == mask) {
+						if(draw_cursor || (font_row & 0x0100) == mask) {
 							color = fgcolor;
 						}
 						*buf = color;

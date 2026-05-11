@@ -160,8 +160,6 @@ AppConfig::ConfigHelp AppConfig::ms_help = {
 ";         saturation: Monitor saturation, as a number from 0.0 to 1.0 (needs support by the shader).\n"
 ";         color_mode: Color mode of the VGA image.\n"
 ";                     Possible values: rgb, gbr, brg, bgr, inverted, mono, mono inverted\n"
-";      cursor_invert: Enable color inversion of the character at the cursor position in text mode.\n"
-";       blink_period: Blink period of blinking text and graphics in frames (default: 32, 0 = blinking disabled).\n"
 ";      ambient_light: Intensity of the ambient light, as a number from 0.0 to 1.0 (needs support by the shader).\n"
 ";  shader_input_size: Shader's input texture size.\n"
 ";                     Possible values: auto, crtc, video_mode.\n"
@@ -588,8 +586,9 @@ AppConfig::ConfigSections AppConfig::ms_sections = {
 		{ DISPLAY_CONTRAST,         PROGRAM_CONFIG, PUBLIC_CFGKEY, "1.0"                         },
 		{ DISPLAY_SATURATION,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "1.0"                         },
 		{ DISPLAY_COLOR_MODE,       PROGRAM_CONFIG, PUBLIC_CFGKEY, "rgb"                         },
-		{ DISPLAY_CURSOR_INVERT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "no"                          },
-		{ DISPLAY_BLINK_PERIOD,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "32"                          },
+		{ DISPLAY_CURSOR_INVERT,    PROGRAM_CONFIG, HIDDEN_CFGKEY, "no"                          },
+		{ DISPLAY_BLINK_RATE,       PROGRAM_CONFIG, HIDDEN_CFGKEY, "32"                          },
+		{ DISPLAY_CURSOR_BLINK_RATE,PROGRAM_CONFIG, HIDDEN_CFGKEY, "16"                          },
 		{ DISPLAY_SAMPLERS_MODE,    PROGRAM_CONFIG, HIDDEN_CFGKEY, "auto"                        },
 		{ DISPLAY_SHADER_INPUT,     PROGRAM_CONFIG, PUBLIC_CFGKEY, "auto"                        },
 		{ DISPLAY_SHADER_OUTPUT,    PROGRAM_CONFIG, PUBLIC_CFGKEY, "native"                      },

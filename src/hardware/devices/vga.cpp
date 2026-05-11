@@ -169,15 +169,26 @@ void VGA::config_changed()
 
 	m_bugs.ps_bit = g_program.config().get_bool_or_default(VGA_SECTION, VGA_PS_BIT_BUG);
 
-	int blink_period = g_program.config().get_int_or_default(DISPLAY_SECTION, DISPLAY_BLINK_PERIOD);
-	m_blink_rate = 0;
-	if(blink_period < 0) {
-		m_blink_rate = VGA_BLINK_RATE;
-		PINFOF(LOG_V0, LOG_VGA, "Invalid blink period, using default %d\n", VGA_BLINK_RATE * 2);
-	} else if(blink_period < 2) {
-		PINFOF(LOG_V0, LOG_VGA, "Blink period below 2, blinking disabled.\n");
+	m_blink_toggle_rate = VGA_BLINK_RATE / 2;
+	int blink_rate = g_program.config().get_int_or_default(DISPLAY_SECTION, DISPLAY_BLINK_RATE);
+	if(blink_rate < 0) {
+		PINFOF(LOG_V0, LOG_VGA, "Invalid blink rate, using default %d\n", VGA_BLINK_RATE);
+	} else if(blink_rate < 2) {
+		m_blink_toggle_rate = 0;
+		PINFOF(LOG_V0, LOG_VGA, "Blink rate below 2, blinking disabled.\n");
 	} else {
-		m_blink_rate = blink_period >> 1;
+		m_blink_toggle_rate = blink_rate / 2;
+	}
+
+	m_cursor_blink_toggle_rate = CURSOR_BLINK_RATE / 2;
+	blink_rate = g_program.config().get_int_or_default(DISPLAY_SECTION, DISPLAY_CURSOR_BLINK_RATE);
+	if(blink_rate < 0) {
+		PINFOF(LOG_V0, LOG_VGA, "Invalid cursor blink rate, using default %d\n", CURSOR_BLINK_RATE);
+	} else if(blink_rate < 2) {
+		m_cursor_blink_toggle_rate = 0;
+		PINFOF(LOG_V0, LOG_VGA, "Cursor blink rate below 2, blinking disabled.\n");
+	} else {
+		m_cursor_blink_toggle_rate = blink_rate / 2;
 	}
 }
 
@@ -1799,7 +1810,7 @@ void VGA::text_update()
 	TextModeInfo tm_info;
 	tm_info.start_address = m_s.CRTC.latches.start_address * 2;
 	tm_info.cs_start = m_s.CRTC.cursor_start;
-	if(!m_s.blink_visible) {
+	if(!m_s.cursor_blink_visible) {
 		tm_info.cs_start |= CRTC_CO;
 	}
 	tm_info.cs_end = m_s.CRTC.cursor_end.RSCE;
@@ -1820,6 +1831,12 @@ void VGA::text_update()
 		if(m_s.blink_visible) {
 			tm_info.blink_flags |= TEXT_BLINK_STATE;
 		}
+	}
+	if(m_s.cursor_blink_toggle) {
+		tm_info.blink_flags |= CURSOR_BLINK_TOGGLE;
+	}
+	if(m_s.cursor_blink_visible) {
+		tm_info.blink_flags |= CURSOR_BLINK_STATE;
 	}
 	if(m_s.sequencer.clocking.D89 == 0) {
 		if(tm_info.h_panning >= 8) {
@@ -1938,16 +1955,22 @@ void VGA::frame_start(uint64_t _time)
 
 	// update cursor/blinking status for this frame
 	m_s.blink_toggle = false;
-	if(!m_blink_rate) {
-		m_s.blink_visible = true;
-	} else if(m_stats.frame_cnt % m_blink_rate == 0) {
-		if((m_s.vmode.mode == VGA_M_TEXT) || (m_s.attr_ctrl.attr_mode.EB)) {
-			m_s.blink_toggle = true;
-			m_s.blink_visible = !m_s.blink_visible;
-		} else {
-			m_s.blink_toggle = false;
-			m_s.blink_visible = false;
-		}
+	if(!m_s.attr_ctrl.attr_mode.EB || !m_blink_toggle_rate) {
+		// blinking is disabled using the EB bit (doesn't affect the text cursor)
+		// or user configuration
+		m_s.blink_visible = false;
+	} else if(m_stats.frame_cnt % m_blink_toggle_rate == 0) {
+		m_s.blink_toggle = true;
+		m_s.blink_visible = !m_s.blink_visible;
+	}
+
+	m_s.cursor_blink_toggle = false;
+	if(!m_cursor_blink_toggle_rate) {
+		// force cursor visible if blinking is disabled, otherwise we might have problems... 
+		m_s.cursor_blink_visible = true;
+	} else if(m_stats.frame_cnt % m_cursor_blink_toggle_rate == 0) {
+		m_s.cursor_blink_toggle = true;
+		m_s.cursor_blink_visible = !m_s.cursor_blink_visible;
 	}
 
 	if(m_s.render_mode == VGA_RENDER_LINE) {
@@ -1981,9 +2004,11 @@ void VGA::frame_end(uint64_t _time)
 	
 	UNUSED(_time);
 
-	if(!is_video_disabled() && (m_s.needs_update || 
-		((m_s.vmode.mode==VGA_M_EGA || m_s.vmode.mode==VGA_M_TEXT) && m_s.blink_toggle))
-	)
+	const bool gfx_blink = (m_s.vmode.mode == VGA_M_EGA) && m_s.blink_toggle;
+	const bool text_blink = (m_s.vmode.mode == VGA_M_TEXT) && (m_s.blink_toggle || m_s.cursor_blink_toggle);
+	const bool blink = gfx_blink || text_blink;
+
+	if(!is_video_disabled() && (m_s.needs_update || blink))
 	{
 		m_display->lock();
 		if(m_s.vmode.mode == VGA_M_TEXT) {

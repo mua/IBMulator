@@ -149,11 +149,14 @@ struct VideoStats
 #define TEXT_BLINK_MODE      0x01
 #define TEXT_BLINK_TOGGLE    0x02
 #define TEXT_BLINK_STATE     0x04
+#define CURSOR_BLINK_TOGGLE  0x08
+#define CURSOR_BLINK_STATE   0x10
 
 // The blink rate is dependent on the vertical frame rate. The on/off state
 // of the blinking areas changes every 16 vertical frames, which amounts to 1.875 blinks
 // per second at 60 vertical frames per second (60/32).
-#define VGA_BLINK_RATE  16
+#define VGA_BLINK_RATE  32
+#define CURSOR_BLINK_RATE (VGA_BLINK_RATE / 2)
 
 struct TextModeInfo
 {
@@ -202,6 +205,8 @@ protected:
 		// blinking support (text cursor and monochrome gfx)
 		bool blink_toggle;
 		bool blink_visible;
+		bool cursor_blink_toggle;
+		bool cursor_blink_visible;
 		// text mode support
 		uint8_t text_snapshot[128 * 1024]; // current text snapshot
 		uint16_t charmap_address[2];
@@ -246,7 +251,8 @@ protected:
 	std::atomic<bool> m_dbg_frame_step = false;
 
 	bool m_use_overscan = false;
-	int m_blink_rate = VGA_BLINK_RATE;
+	int m_blink_toggle_rate = VGA_BLINK_RATE / 2;
+	int m_cursor_blink_toggle_rate = VGA_BLINK_RATE / 4;
 
 public:
 	VGA(Devices *_dev);
