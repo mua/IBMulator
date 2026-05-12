@@ -572,6 +572,7 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 	unsigned line_compare = m_s.line_compare >> _tm_info->double_scanning;
 
 	uint32_t *buf_row = &m_fb[m_s.xoffset] + (m_s.yoffset * m_fb.width());
+	const uint32_t *buf_limit = &m_fb[m_fb.size() - 1];
 
 	unsigned curs;
 	// first invalidate character at previous and new cursor location
@@ -606,12 +607,37 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 
 	do {
 		uint32_t *buf = buf_row;
+		uint8_t *new_line = _new_text;
+		uint8_t *old_line = _old_text;
+
+		int cfstart = 0;
+		int cfheight = m_s.mode.cheight;
 		unsigned hchars = m_s.mode.textcols;
+
+		auto go_to_next_character_row_location = [&](){
+			buf_row += (m_fb.width() << _tm_info->double_scanning) * cfheight;
+
+			if(!split_screen && (y == split_textrow)) {
+				_new_text = text_base;
+				forceUpdate = true;
+				cs_y = 0;
+				if(_tm_info->split_hpanning) {
+					m_s.h_panning = 0;
+				}
+				text_rows = ((m_s.mode.imgh - line_compare + m_s.mode.cheight - 2) / m_s.mode.cheight) + 1;
+				split_screen = true;
+			} else {
+				_new_text = new_line + _tm_info->line_offset;
+				_old_text = old_line + _tm_info->line_offset;
+				cs_y++;
+				y++;
+			}
+		};
+
 		if(m_s.h_panning) {
 			hchars++;
 		}
-		uint8_t cfheight = m_s.mode.cheight;
-		uint8_t cfstart = 0;
+
 		if(split_screen) {
 			if(text_rows == 1) {
 				cfheight = (m_s.mode.imgh - line_compare - 1) % m_s.mode.cheight;
@@ -627,25 +653,38 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 				cfheight = m_s.v_panning;
 			}
 		}
+
 		if(!split_screen && (y == split_textrow)) {
 			if((split_fontrows - cfstart) < cfheight) {
 				cfheight = split_fontrows - cfstart;
 			}
 		}
-		uint8_t *new_line = _new_text;
-		uint8_t *old_line = _old_text;
-		//unsigned x = 0;
+
+		if(cfheight <= 0) {
+			cfheight = 0;
+			go_to_next_character_row_location();
+			if(--text_rows > 0) {
+				continue;
+			} else {
+				break;
+			}
+		}
+
 		unsigned offset = cs_y * _tm_info->line_offset;
 		do {
+			// char. width is either 8 or 9 dots
+			assert(m_s.mode.cwidth);
 			uint8_t cfwidth = m_s.mode.cwidth;
 			if(m_s.h_panning) {
 				if(hchars > m_s.mode.textcols) {
+					// h.panning is always < char. width (see VGA::text_update())
+					assert(m_s.h_panning < cfwidth);
 					cfwidth -= m_s.h_panning;
 				} else if(hchars == 1) {
 					cfwidth = m_s.h_panning;
 				}
 			}
-			// check if char needs to be updated
+
 			if(forceUpdate || (_old_text[0] != _new_text[0]) || (_old_text[1] != _new_text[1]))
 			{
 				//PDEBUGF(LOG_V2, LOG_VGA, "%s", str_convert(std::string(1, char(_new_text[0])), "UTF-8", "IBM850").c_str());
@@ -702,6 +741,10 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 						if(draw_cursor || (font_row & 0x0100) == mask) {
 							color = fgcolor;
 						}
+						if(buf > buf_limit) {
+							PERRFEX(LOG_VGA, "*** BUG *** : buffer update beyond limit!\n");
+							return;
+						}
 						*buf = color;
 						if(_tm_info->double_dot) {
 							*(buf+1) = color;
@@ -731,31 +774,14 @@ void VGADisplay::text_update(uint8_t *_old_text, uint8_t *_new_text,
 			_new_text += 2;
 			_old_text += 2;
 			offset += 2;
-			//x++;
 
 			// process one entire horizontal row
 		} while(--hchars);
 
 		//PDEBUGF(LOG_V2, LOG_VGA, "\n");
 
-		// go to next character row location
-		buf_row += (m_fb.width() << _tm_info->double_scanning) * cfheight;
+		go_to_next_character_row_location();
 
-		if(!split_screen && (y == split_textrow)) {
-			_new_text = text_base;
-			forceUpdate = true;
-			cs_y = 0;
-			if(_tm_info->split_hpanning) {
-				m_s.h_panning = 0;
-			}
-			text_rows = ((m_s.mode.imgh - line_compare + m_s.mode.cheight - 2) / m_s.mode.cheight) + 1;
-			split_screen = true;
-		} else {
-			_new_text = new_line + _tm_info->line_offset;
-			_old_text = old_line + _tm_info->line_offset;
-			cs_y++;
-			y++;
-		}
 	} while(--text_rows > 0);
 
 	m_s.h_panning = _tm_info->h_panning;

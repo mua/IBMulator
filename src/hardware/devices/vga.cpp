@@ -1839,12 +1839,14 @@ void VGA::text_update()
 		tm_info.blink_flags |= CURSOR_BLINK_STATE;
 	}
 	if(m_s.sequencer.clocking.D89 == 0) {
+		// char width = 9 dots
 		if(tm_info.h_panning >= 8) {
 			tm_info.h_panning = 0;
 		} else {
 			tm_info.h_panning++;
 		}
 	} else {
+		// char width = 8 dots
 		tm_info.h_panning &= 0x07;
 	}
 

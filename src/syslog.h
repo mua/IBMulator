@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2025  Marco Bortolin
+ * Copyright (C) 2015-2026  Marco Bortolin
  *
  * This file is part of IBMulator.
  *
@@ -46,7 +46,7 @@ extern Syslog g_syslog;
 #define PWARNF(verb,fac,format,...)	LOG(LOG_WARNING,fac,verb,format, ## __VA_ARGS__)
 #define PERRF(fac,format,...)		LOG(LOG_ERROR,fac,LOG_V0,format, ## __VA_ARGS__)
 
-#define PERRFEX(fac,format,...) { LOG(LOG_ERROR,fac,LOG_V0,"%s:%d " format, __FILE__,__LINE__, ## __VA_ARGS__) }
+#define PERRFEX(fac,format,...) LOG(LOG_ERROR,fac,LOG_V0,"%s:%d " format, __FILE__,__LINE__, ## __VA_ARGS__)
 
 #define PERR_ABORT(format,...) 		{ LOG(LOG_ERROR,LOG_PROGRAM,LOG_V0,format, ## __VA_ARGS__) ; exit(1); }
 #define PERRF_ABORT(fac,format,...) { LOG(LOG_ERROR,fac,LOG_V0,format, ## __VA_ARGS__) ; exit(1); }
