@@ -1818,6 +1818,9 @@ void VGA::text_update()
 	tm_info.cs_end = m_s.CRTC.cursor_end.RSCE;
 	tm_info.line_offset = m_s.CRTC.latches.line_offset * 2;
 	tm_info.line_compare = m_s.CRTC.latches.line_compare;
+	if(tm_info.line_compare > 0) {
+		tm_info.line_compare--;
+	}
 	tm_info.h_panning = m_s.attr_ctrl.horiz_pel_panning;
 	tm_info.v_panning = m_s.CRTC.preset_row_scan.SRS;
 	tm_info.line_graphics = m_s.attr_ctrl.attr_mode.ELG;
