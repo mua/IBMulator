@@ -1354,18 +1354,17 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 				PDEBUGF(LOG_V2, LOG_VGA, " invalid register, ignored\n");
 				return;
 			}
+			uint8_t oldvalue = m_s.CRTC;
 			if(m_s.CRTC.is_write_protected() && (m_s.CRTC.address <= CRTC_OVERFLOW)) {
+				PDEBUGF(LOG_V2, LOG_VGA, " write protected");
 				if(m_s.CRTC.address == CRTC_OVERFLOW) {
 					// The line compare bit in the Overflow register is not protected.
-					m_s.CRTC.overflow.LC8 = (_value & CRTC_LC8);
-					needs_redraw = true;
-					PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.CRTC);
-					break;
+					PDEBUGF(LOG_V2, LOG_VGA, ", except LC8");
+					_value = (oldvalue & ~CRTC_LC8) | (_value & CRTC_LC8);
+				} else {
+					_value = oldvalue;
 				}
-				PDEBUGF(LOG_V2, LOG_VGA, " (write protected)\n");
-				break;
 			}
-			uint8_t oldvalue = m_s.CRTC;
 			m_s.CRTC = _value;
 			PDEBUGF(LOG_V2, LOG_VGA, " %s\n", (const char*)m_s.CRTC);
 			if(_value != oldvalue) {
@@ -1436,6 +1435,9 @@ void VGA::write(uint16_t _address, uint16_t _value, unsigned _io_len)
 						PDEBUGF(LOG_V2, LOG_VGA, "CRTC start address 0x%02X=%02X\n",
 								m_s.CRTC.address, _value);
 						m_stats.last_saddr_line = current_scanline();
+						break;
+					default:
+						assert(false);
 						break;
 				}
 			}
