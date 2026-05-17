@@ -1026,12 +1026,13 @@ void SBlasterPro::mixer_reset()
 	
 	memset(&m_s.mixer, 0, sizeof(m_s.mixer));
 
-	// default values according to "Sound Blaster Programming Information v0.90 by André Baresel - Craig Jackson"
-	// default level = 4
 	// bits 0 and 4 are always 1
-	m_s.mixer.reg[0x04] = 0x99; // DAC
-	m_s.mixer.reg[0x22] = 0x99; // Master
-	m_s.mixer.reg[0x26] = 0x99; // FM
+	// default values according to "Sound Blaster Programming Information v0.90 by André Baresel - Craig Jackson"
+	// are all channels at 0x99 (level = 4).
+	// use max level for usability reasons.
+	m_s.mixer.reg[0x04] = 0xff; // DAC
+	m_s.mixer.reg[0x22] = 0xff; // Master
+	m_s.mixer.reg[0x26] = 0xff; // FM
 
 	debug_print_volumes(0x04, "DAC");
 	debug_print_volumes(0x22, "MASTER");
