@@ -158,6 +158,7 @@ void CPUBus::update(int _cycles)
 				// rollback extra fetches
 				m_s.pq_tail = m_pq_cycles[i].tail;
 				m_s.pq_len = m_s.pq_tail - m_s.pq_left;
+				assert(m_s.pq_len >= 0);
 				#if CPULOG
 				m_logger->rollback(MemoryLogger::CODE, m_pq_cycles_len-i);
 				g_memory.logger().rollback(MemoryLogger::CODE, m_pq_cycles_len-i);
@@ -198,8 +199,14 @@ uint32_t CPUBus::fill_pq_read_mem(uint32_t _address, int &_cycles)
 }
 
 template<int bytes, bool paging>
-int CPUBus::fill_pq(int _amount, bool _paddress)
+int CPUBus::fill_pq(const int _amount, const bool _paddress)
 {
+#if (PIPELINED_ADDR_286 || PIPELINED_ADDR_386)
+	int paddress = _paddress * m_paddress;
+#else
+	UNUSED(_paddress);
+#endif
+
 	uint8_t *pq_ptr;
 
 	// move valid bytes to the left
@@ -208,38 +215,43 @@ int CPUBus::fill_pq(int _amount, bool _paddress)
 		int len = m_s.pq_len;
 		pq_ptr = &m_s.pq[0];
 		while(len--) {
+			assert((pq_ptr + move) <= &m_s.pq[CPU_PQ_MAX_SIZE]);
 			*pq_ptr = *(pq_ptr + move);
 			pq_ptr++;
 		}
 	}
 	m_s.pq_left = m_s.cseip;
+	m_s.pq_valid = true;
 	pq_ptr = &m_s.pq[m_s.pq_len]; // the next free byte slot
 
-#if (PIPELINED_ADDR_286 || PIPELINED_ADDR_386)
-	int paddress = _paddress * m_paddress;
-#else
-	UNUSED(_paddress);
-#endif
-
-	uint64_t pq_limit = uint64_t(m_s.pq_tail) + pq_free_space() - bytes;
-	if(pq_limit >= 0xffffffff) {
-		pq_limit = 0xffffffff - bytes;
-	}
-	int amount = _amount;
-	int cycles = 0;
 	m_pq_cycles_len = 0;
 
-	while(((_amount && amount>0) || !_amount) && m_s.pq_tail <= pq_limit) {
-		int adv = bytes - (m_s.pq_tail & (bytes-1));
+	// beware of 32bit int overflow
+	const uint32_t free_space = pq_free_space();
+	const uint32_t pq_tail_max {
+		(LIKELY(0xffffffff - m_s.pq_tail >= free_space)) ?
+		m_s.pq_tail + free_space
+		: 0xffffffff
+	};
+
+	int amount = _amount;
+	int cycles = 0;
+
+	while(((_amount && amount>0) || !_amount) && m_s.pq_tail <= pq_tail_max) {
+		const int adv = bytes - (m_s.pq_tail & (bytes-1));
+
+		if(m_s.pq_tail > pq_tail_max - adv) {
+			break;
+		} else if(UNLIKELY(paging && (PAGE_OFFSET(m_s.pq_tail) + adv) > 4096)) {
+			// reads must be inside dword boundaries
+			break;
+		}
+
 		int c = 0;
-
-		// reads must be inside dword boundaries
-		assert(!paging || (PAGE_OFFSET(m_s.pq_tail) + adv) <= 4096);
-
 		try {
 			switch(adv) {
 				case 2: { // word aligned
-					uint16_t v = fill_pq_read_mem<2,paging>(m_s.pq_tail, c);
+					const uint16_t v = fill_pq_read_mem<2,paging>(m_s.pq_tail, c);
 					*pq_ptr = v;
 					*(pq_ptr + 1) = v >> 8;
 					break;
@@ -248,7 +260,7 @@ int CPUBus::fill_pq(int _amount, bool _paddress)
 					*pq_ptr = fill_pq_read_mem<1,paging>(m_s.pq_tail, c);
 					break;
 				case 4: { // dword aligned
-					uint32_t v = fill_pq_read_mem<4,paging>(m_s.pq_tail, c);
+					const uint32_t v = fill_pq_read_mem<4,paging>(m_s.pq_tail, c);
 					*pq_ptr = v;
 					*(pq_ptr + 1) = v >> 8;
 					*(pq_ptr + 2) = v >> 16;
@@ -256,7 +268,7 @@ int CPUBus::fill_pq(int _amount, bool _paddress)
 					break;
 				}
 				case 3: { // 1-byte misaligned (left)
-					uint32_t v = fill_pq_read_mem<4,paging>(m_s.pq_tail-1, c);
+					const uint32_t v = fill_pq_read_mem<4,paging>(m_s.pq_tail-1, c);
 					*pq_ptr = v >> 8;
 					*(pq_ptr + 1) = v >> 16;
 					*(pq_ptr + 2) = v >> 24;
@@ -274,12 +286,12 @@ int CPUBus::fill_pq(int _amount, bool _paddress)
 				// no amount required, queue is filled with 0 or more valid bytes.
 				// don't throw exceptions for code prefetching.
 				// exceptions are thrown when instruction is executed (see CPUExecutor::execute())
-				m_s.pq_valid = true;
-				return cycles;
+				break;
 			}
 		}
 
 		if(!_amount) {
+			assert(m_pq_cycles_len < CPU_PQ_MAX_SIZE / 2);
 			m_pq_cycles[m_pq_cycles_len].tail = m_s.pq_tail;
 			m_pq_cycles[m_pq_cycles_len].cycles = c;
 			m_pq_cycles_len++;
@@ -297,7 +309,10 @@ int CPUBus::fill_pq(int _amount, bool _paddress)
 		m_s.pq_len += adv;
 	}
 
-	m_s.pq_valid = true;
+	if(UNLIKELY(amount > 0)) {
+		m_s.pq_valid = false;
+		throw CPUShutdown("code fetching error");
+	}
 
 	return cycles;
 }

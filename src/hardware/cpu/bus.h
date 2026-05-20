@@ -35,14 +35,44 @@ class CPUBus
 {
 private:
 	struct {
-		// anatomy of the PQ:
-		//                 ┌------[len]-----┐
-		// addr: left    cseip             tail
-		//       ╔══╤    ╤══╤══╤══╤══╤══╤══╤══╤    ╤══╗
-		// data: ║  │ .. │  │  │  │  │  │  │  │ .. │  ║
-		//       ╚══╧    ╧══╧══╧══╧══╧══╧══╧══╧    ╧══╝
-		//        ^       ^                         ^
-		// index: 0      pq_idx()                  size-1
+		// Anatomy of the PQ
+		//  □ = empty slot
+		//  ■ = valid byte
+		//  ◩ = spent byte
+		//
+		// a) after reset/invalidation:
+		//
+		//       len = 0
+		// addr: left = cseip = tail
+		//         ▼ 
+		//       ╔═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╤    ╤═══╗
+		// data: ║ □ │ □ │ □ │ □ │ □ │ □ │ □ │ □ │ .. │ □ ║
+		//       ╚═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╧    ╧═══╝
+		//         ▲                                    ▲
+		// index:  0 = pq_idx()                       size-1
+		//
+		// b) after a fill:
+		//
+		//         ┌─────────[len]─────┐
+		// addr: left = cseip          │  tail
+		//         ▼                   ▼   ▼
+		//       ╔═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╤    ╤═══╗
+		// data: ║ ■ │ ■ │ ■ │ ■ │ ■ │ ■ │ □ │ □ │ .. │ □ ║
+		//       ╚═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╧    ╧═══╝
+		//         ▲                                    ▲
+		// index:  0 = pq_idx()                       size-1
+		//
+		// c) during decoding, before a fill:
+		//
+		//                 ┌───[len]───┐
+		// addr: left    cseip         │  tail
+		//         ▼       ▼           ▼   ▼
+		//       ╔═══╤═══╤═══╤═══╤═══╤═══╤═══╤═══╤    ╤═══╗
+		// data: ║ ◩ │ ◩ │ ■ │ ■ │ ■ │ ■ │ □ │ □ │ .. │ □ ║
+		//       ╚═══╧═══╧═══╧═══╧═══╧═══╧═══╧═══╧    ╧═══╝
+		//         ▲       ▲                            ▲
+		// index:  0      pq_idx()                    size-1
+		//
 		//
 		// addresses are in linear space
 		uint32_t cseip;   // address of the instruction pointer
@@ -50,7 +80,7 @@ private:
 		uint8_t  pq[CPU_PQ_MAX_SIZE];
 		bool     pq_valid;
 		uint32_t pq_left; // address of the head (always >= cseip)
-		uint32_t pq_tail; // address of the tail (always >= cseip)
+		uint32_t pq_tail; // address of the tail (always >= cseip), same as end() of std containers
 		int      pq_len;
 	} m_s;
 
@@ -172,7 +202,7 @@ private:
 		return m_s.pq_len == 0;
 	}
 	template<int len, bool paging> uint32_t fill_pq_read_mem(uint32_t _linear, int &_cycles);
-	template<int bytes, bool paging> int fill_pq(int _amount, bool _paddress);
+	template<int bytes, bool paging> int fill_pq(const int _amount, const bool _paddress);
 	int (CPUBus::*fill_pq_fn)(int, bool) = nullptr;
 
 	template<class T, int L>
@@ -187,6 +217,7 @@ private:
 				m_cycles_ahead = 0;
 			}
 		}
+		assert(m_s.pq_len >= L);
 		T data;
 		switch(L) {
 			case 1:
