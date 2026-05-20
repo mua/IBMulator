@@ -32,6 +32,8 @@ protected:
 		int fb_height; // the framebuffer width
 		SDL_Rect res; // the last VGA image resolution (can be smaller than fb_width/fb_height)
 		SDL_Texture *texture;
+		int tex_width;
+		int tex_height;
 		SDL_Rect vga_rect;
 		SDL_Rect crt_rect;
 	} m_vga = {};

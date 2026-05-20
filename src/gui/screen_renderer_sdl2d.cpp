@@ -58,10 +58,21 @@ void ScreenRenderer_SDL2D::load_vga_shader_preset(std::string _preset)
 	if(m_vga.texture) {
 		SDL_DestroyTexture(m_vga.texture);
 	}
+
+	// add a 1-pixel border
+	m_vga.tex_width = m_vga.fb_width + 2;
+	m_vga.tex_height = m_vga.fb_height + 2;
+	m_vga.res = { 0, 0, m_vga.tex_width, m_vga.tex_height };
+
 	m_vga.texture = SDL_CreateTexture(m_sdl_renderer,
 			SDL_PIXELFORMAT_ABGR8888,
 			SDL_TEXTUREACCESS_STREAMING,
-			m_vga.fb_width, m_vga.fb_height);
+			m_vga.tex_width, m_vga.tex_height);
+
+	if(!m_vga.texture) {
+		PERRF(LOG_GUI, "Cannot create the VGA texture: %s\n", SDL_GetError());
+		throw std::exception();
+	}
 }
 
 void ScreenRenderer_SDL2D::load_crt_shader_preset(std::string)
@@ -78,14 +89,39 @@ void ScreenRenderer_SDL2D::store_screen_params(const ScreenRenderer::Params &_sc
 void ScreenRenderer_SDL2D::store_vga_framebuffer(
 		FrameBuffer &_fb, const VideoModeInfo &_mode)
 {
+	assert(m_vga.texture);
 	assert(unsigned(_mode.framew * _mode.frameh) <= _fb.size());
 	assert(_fb.width() == m_vga.fb_width);
-	
-	m_vga.res = {0, 0, _mode.framew, _mode.frameh};
-	int result = SDL_UpdateTexture(m_vga.texture, &m_vga.res, &_fb[0], _fb.pitch());
-	if(result < 0) {
-		PDEBUGF(LOG_V0, LOG_GUI, "Cannot update VGA texture: %s\n", SDL_GetError());
+
+	void *pixels;
+	int pitch;
+
+	if(SDL_LockTexture(m_vga.texture, nullptr, &pixels, &pitch) != 0) {
+		PDEBUGF(LOG_V0, LOG_GUI, "Cannot lock the VGA texture: %s\n", SDL_GetError());
+		return;
 	}
+
+	if(_mode.framew < m_vga.res.w || _mode.frameh < m_vga.res.h) {
+		// we need to make sure the pixels around the current frame are black
+		// due to color bleeding caused by out-of-texture linear sampling
+		std::memset(pixels, 0, pitch * m_vga.tex_height);
+	}
+
+	// consider the 1-pixel border
+	m_vga.res = { 1, 1, _mode.framew, _mode.frameh };
+
+	const uint8_t *src_row = reinterpret_cast<const uint8_t*>(&_fb[0]);
+	uint8_t *dst_row = static_cast<uint8_t*>(pixels);
+	dst_row += m_vga.res.x * 4;
+	dst_row += m_vga.res.y * pitch;
+
+	for(int y = 0; y < m_vga.res.h; y++) {
+		std::memcpy(dst_row, src_row, m_vga.res.w * 4);
+		src_row += _fb.pitch();
+		dst_row += pitch;
+	}
+
+	SDL_UnlockTexture(m_vga.texture);
 }
 
 SDL_Rect ScreenRenderer_SDL2D::to_rect(const mat4f &_mvpmat)
@@ -106,10 +142,8 @@ SDL_Rect ScreenRenderer_SDL2D::to_rect(const mat4f &_mvpmat)
 
 void ScreenRenderer_SDL2D::render_vga()
 {
-	if(!m_vga.texture) {
-		PDEBUGF(LOG_V0, LOG_GUI, "VGA texture is not ready!");
-		return;
-	}
+	assert(m_vga.texture);
+
 	SDL_RenderCopy(m_sdl_renderer, m_vga.texture, &m_vga.res, &m_vga.vga_rect);
 }
 
