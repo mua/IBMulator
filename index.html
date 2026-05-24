@@ -20,14 +20,13 @@
 <li><a href="#media">Media</a></li>
 <li><a href="#download">Download</a></li>
 <li><a href="#usage">Usage</a>
-<li><a href="#roadmap">Roadmap</a></li>
 <li><a href="#FAQ">FAQ</a>
 <li><a href="#tools">Tools</a></li>
 <li><a href="#contact">Contact</a></li>
 <li><a href="#disclaimer">Disclaimer</a>
 </li>
 </ul>
-<div style="text-align:center;">Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.19">v0.19</a></div>
+<div style="text-align:center;">Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.20">v0.20</a></div>
 
 <div>
 <a class="github-fork-ribbon" href="https://github.com/barotto/IBMulator" data-ribbon="Fork me on GitHub" title="Fork me on GitHub">Fork me on GitHub</a>
@@ -35,13 +34,6 @@
 
 <hr />
 <div id="donations">
-<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
-<input type="hidden" name="cmd" value="_donations" />
-<input type="hidden" name="business" value="L8BNKML7JYBJA" />
-<input type="hidden" name="item_name" value="Donation to the IBMulator project" />
-<input type="hidden" name="currency_code" value="EUR" />
-<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Donate with PayPal button" />
-</form><br />
 <a href='https://ko-fi.com/W7W74HZP4' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://cdn.ko-fi.com/cdn/kofi2.png?v=2' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 <br />
 <img src="media/ps1_love.png" style="padding: 1em 0 0 0" />
@@ -103,7 +95,7 @@ The 8-bit DAC and Programmable Sound Generator with 3 voices plus noise of the <
 <li>IBM 8-bit XTA and ATA HDD controllers with timings.</li>
 <li>Intel 82077AA Floppy disk controller (Model 30 mode) with timings and magnetic flux of floppy disks.</li>
 <li>ATAPI CD-ROM drive (PIO mode).</li>
-<li>IBM VGA adapter, with per-scanline emulation.</li>
+<li>IBM VGA adapter, with overscan border and per-scanline emulation.</li>
 <li>IBM PS/1 Audio Card, AdLib, Creative Sound Blaster (2.01, Pro, Pro 2), Roland MPU-401, PC Speaker.</li>
 <li>Game, Serial (COM), and Parallel (LPT) ports.</li>
 <li>Parallel 9-pin dot-matrix color printer, Epson FX-80/JX-80, IBM Proprinter, and IBM Graphics Printer interpreters.</li>
@@ -131,6 +123,7 @@ The 8-bit DAC and Programmable Sound Generator with 3 voices plus noise of the <
 <a href="media/14-shaders.png"><img src="media/thumbs/14-shaders.png" title="RetroArch slang CRT shader in action with parameters window open" /></a>
 <a href="media/15-mixer.png"><img src="media/thumbs/15-mixer.png" title="The Mixer Control GUI window" /></a>
 <a href="media/16-cdrom.png"><img src="media/thumbs/16-cdrom.png" title="The CD-ROM interface with Monkey Island CD running" /></a>
+<a href="media/17-overscan.png"><img src="media/thumbs/17-overscan.png" title="Catacomb 3D with the red overscan border of pain" /></a>
 </div>
 <div class="videos">
 <a href="https://youtu.be/wm4E_qZfT6M" target="_blank"><img src="media/thumbs/video_04_monkey.png" title="IBMulator 0.14 - System boot and The Secret of Monkey Island intro with PC-Speaker and DSP filters" /></a></li>
@@ -149,7 +142,7 @@ The 8-bit DAC and Programmable Sound Generator with 3 voices plus noise of the <
 
 <a href="#download"><h2 id="download">Download</h2></a>
 <p>
-Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.19">v0.19</a> (released 16/nov/2025)
+Current version: <a href="https://github.com/barotto/IBMulator/releases/tag/v0.20">v0.20</a> (released 24/may/2026)
 <br /><br />
 </p>
 
@@ -189,32 +182,6 @@ ROMs and disk images are copyrighted material and must be downloaded elsewhere
 <p>
 Please read the <a href="https://github.com/barotto/IBMulator/blob/master/docs/USAGE.md">USAGE</a> file included in the distribution package for detailed instructions on how to configure and use the program.
 </p>
-
-<hr />
-
-<a href="#roadmap"><h2 id="roadmap">Roadmap</h2></a>
-
-<h3>What you'll find in the next major version</h3>
-<ul>
-<li><em>TBD</em></li>
-</ul>
-
-<h3>Features likely to be implemented in the not so distant future</h3>
-<ul>
-<li>SVGA emulation.</li>
-<li>80486 emulation.</li>
-<li>PS/1 model 2133 emulation.</li>
-<li>Configurable CPU core, in order to disable unneeded emulated features and speed up the program on slower machines.</li>
-</ul>
-
-<h3>Features I wish to implement some day, maybe ...</h3>
-<ul>
-<li>Comprehensive configuration GUI.</li>
-<li>Sound Blaster 16 emulation.</li>
-<li>Code optimizations and multithreaded CPU core.</li>
-<li>NE2000 network card emulation.</li>
-<li>3D interface mode with VR support (port to Godot Engine?)</li>
-</ul>
 
 <hr />
 
