@@ -63,7 +63,7 @@ You can also find additional information in the [GitHub's Wiki](https://github.c
  * IBM 8-bit XTA and ATA HDD controllers with timings.
  * Intel 82077AA Floppy disk controller (Model 30 mode) with timings and magnetic flux of floppy disks.
  * ATAPI CD-ROM drive (PIO mode).
- * IBM VGA adapter, with per-scanline emulation.
+ * IBM VGA adapter, with overscan border and per-scanline emulation.
  * IBM PS/1 Audio Card, AdLib, Creative Sound Blaster (2.01, Pro, Pro 2), Roland MPU-401, PC Speaker.
  * Game, Serial (COM), and Parallel (LPT) ports.
  * Parallel 9-pin dot-matrix color printer, Epson FX-80/JX-80, IBM Proprinter, and IBM Graphics Printer interpreters.
