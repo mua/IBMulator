@@ -23,6 +23,7 @@
 #include "storagectrl.h"
 #include "hdd.h"
 #include <memory>
+#include <netinet/in.h>
 
 
 class StorageCtrl_PS1 : public StorageCtrl
@@ -207,6 +208,9 @@ private:
 	void cmd_seek();
 	void cmd_format_trk();
 	void cmd_undefined();
+
+	int m_led_sock = -1;
+	struct sockaddr_in m_led_addr = {};
 };
 
 #endif

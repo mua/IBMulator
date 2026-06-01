@@ -36,6 +36,11 @@
 #include "hardware/devices/dma.h"
 #include "hardware/devices/pic.h"
 #include <cstring>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 
 IODEVICE_PORTS(StorageCtrl_PS1) = {
@@ -188,6 +193,15 @@ void StorageCtrl_PS1::install()
 
 	PINFOF(LOG_V0, LOG_HDD, "Installed %s\n", name());
 
+	m_led_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if(m_led_sock >= 0) {
+		fcntl(m_led_sock, F_SETFL, O_NONBLOCK);
+		memset(&m_led_addr, 0, sizeof(m_led_addr));
+		m_led_addr.sin_family = AF_INET;
+		m_led_addr.sin_port = htons(54321);
+		inet_pton(AF_INET, "127.0.0.1", &m_led_addr.sin_addr);
+	}
+
 	m_disk.set_name("Drive C");
 	m_disk.install(this, 0, DISK_C_SECTION);
 }
@@ -195,6 +209,11 @@ void StorageCtrl_PS1::install()
 void StorageCtrl_PS1::remove()
 {
 	StorageCtrl::remove();
+
+	if(m_led_sock >= 0) {
+		close(m_led_sock);
+		m_led_sock = -1;
+	}
 
 	m_disk.remove();
 
@@ -860,6 +879,10 @@ void StorageCtrl_PS1::increment_sector()
 
 void StorageCtrl_PS1::read_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
+	if(m_led_sock >= 0) {
+		sendto(m_led_sock, "x", 1, MSG_DONTWAIT,
+			(struct sockaddr*)&m_led_addr, sizeof(m_led_addr));
+	}
 	assert(_buf <= 1);
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR READ C:%d,H:%d,S:%d -> buf:%d\n",
 			_c, _h, _s, _buf);
@@ -870,6 +893,10 @@ void StorageCtrl_PS1::read_sector(unsigned _c, unsigned _h, unsigned _s, unsigne
 
 void StorageCtrl_PS1::write_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
+	if(m_led_sock >= 0) {
+		sendto(m_led_sock, "x", 1, MSG_DONTWAIT,
+			(struct sockaddr*)&m_led_addr, sizeof(m_led_addr));
+	}
 	assert(_buf <= 1);
 	PDEBUGF(LOG_V2, LOG_HDD, "SECTOR WRITE C:%d,H:%d,S:%d <- buf:%d\n",
 			_c, _h, _s, _buf);

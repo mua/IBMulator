@@ -22,6 +22,7 @@
 #include <chrono>
 #include <SDL.h>
 
+#if CHRONO_RDTSC
 Chrono_RDTSC::Chrono_RDTSC()
 :
 m_freq_hz(0),
@@ -83,6 +84,8 @@ void Chrono_RDTSC::calibrate(const Chrono_RDTSC &_c)
 {
 	set_freq(_c.get_freq());
 }
+
+#endif // CHRONO_RDTSC
 
 void Chrono_CPP11::calibrate()
 {

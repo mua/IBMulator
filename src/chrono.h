@@ -25,6 +25,7 @@
 
 #define RDTSCP(low) __asm__ __volatile__ ("rdtscp" : "=A" (low));
 
+#if CHRONO_RDTSC
 /*
  * Chronograph that use the RDTSC instruction to keep the time.
  * It is slightly faster than Chrono_CPP11 but it only works on a CPU that has a
@@ -108,6 +109,7 @@ public:
 		return get_msec(elapsed_ticks());
 	}
 };
+#endif // CHRONO_RDTSC
 
 
 class Chrono_CPP11
