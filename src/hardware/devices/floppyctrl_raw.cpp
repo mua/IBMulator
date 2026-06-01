@@ -97,13 +97,16 @@ void FloppyCtrl_Raw::install()
 			name()
 	);
 
-	m_led_sock = socket(AF_INET, SOCK_DGRAM, 0);
-	if(m_led_sock >= 0) {
-		fcntl(m_led_sock, F_SETFL, O_NONBLOCK);
-		memset(&m_led_addr, 0, sizeof(m_led_addr));
-		m_led_addr.sin_family = AF_INET;
-		m_led_addr.sin_port = htons(54321);
-		inet_pton(AF_INET, "127.0.0.1", &m_led_addr.sin_addr);
+	int led_port = g_program.config().get_int(DRIVES_SECTION, DRIVES_LED_PORT, 54321);
+	if(led_port > 0) {
+		m_led_sock = socket(AF_INET, SOCK_DGRAM, 0);
+		if(m_led_sock >= 0) {
+			fcntl(m_led_sock, F_SETFL, O_NONBLOCK);
+			memset(&m_led_addr, 0, sizeof(m_led_addr));
+			m_led_addr.sin_family = AF_INET;
+			m_led_addr.sin_port = htons(led_port);
+			inet_pton(AF_INET, "127.0.0.1", &m_led_addr.sin_addr);
+		}
 	}
 
 	PINFOF(LOG_V0, LOG_FDC, "Installed Intel 82077AA floppy disk controller (Raw sector images)\n");

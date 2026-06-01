@@ -238,6 +238,7 @@ public:
 #define DRIVES_HDD_COMMIT       "hdd_commit"
 #define DRIVES_CDROM            "cdrom"
 #define DRIVES_CDROM_IDLE       "cdrom_idle"
+#define DRIVES_LED_PORT         "led_port"
 
 #define DISK_A_SECTION          "floppy_a"
 #define DISK_B_SECTION          "floppy_b"
