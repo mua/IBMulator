@@ -880,7 +880,7 @@ void StorageCtrl_PS1::increment_sector()
 void StorageCtrl_PS1::read_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
 	if(m_led_sock >= 0) {
-		sendto(m_led_sock, "x", 1, MSG_DONTWAIT,
+		sendto(m_led_sock, "H", 1, MSG_DONTWAIT,
 			(struct sockaddr*)&m_led_addr, sizeof(m_led_addr));
 	}
 	assert(_buf <= 1);
@@ -894,7 +894,7 @@ void StorageCtrl_PS1::read_sector(unsigned _c, unsigned _h, unsigned _s, unsigne
 void StorageCtrl_PS1::write_sector(unsigned _c, unsigned _h, unsigned _s, unsigned _buf)
 {
 	if(m_led_sock >= 0) {
-		sendto(m_led_sock, "x", 1, MSG_DONTWAIT,
+		sendto(m_led_sock, "H", 1, MSG_DONTWAIT,
 			(struct sockaddr*)&m_led_addr, sizeof(m_led_addr));
 	}
 	assert(_buf <= 1);

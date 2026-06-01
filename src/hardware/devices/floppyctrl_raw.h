@@ -23,6 +23,7 @@
 
 #include "floppyctrl.h"
 #include "floppydisk_raw.h"
+#include <netinet/in.h>
 
 /*
  * Intel 82077AA Floppy Disk Controller.
@@ -182,6 +183,9 @@ protected:
 
 	void clr_drive_busy() { m_s.main_status_reg &= 0xF0; }
 	void set_drive_busy(uint8_t _drive) { m_s.main_status_reg |= (1 << _drive); }
+
+	int m_led_sock = -1;
+	struct sockaddr_in m_led_addr = {};
 };
 
 #endif

@@ -32,6 +32,11 @@
 #include "floppyctrl_raw.h"
 #include "floppyfmt_img.h"
 #include "floppyfmt_imd.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 const std::map<unsigned,FloppyCtrl_Raw::CmdDef> FloppyCtrl_Raw::ms_cmd_list = {
 	{ FDC_CMD_READ        , {FDC_CMD_READ        , 9, "read data",          &FloppyCtrl_Raw::cmd_read_data} },
@@ -92,12 +97,26 @@ void FloppyCtrl_Raw::install()
 			name()
 	);
 
+	m_led_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if(m_led_sock >= 0) {
+		fcntl(m_led_sock, F_SETFL, O_NONBLOCK);
+		memset(&m_led_addr, 0, sizeof(m_led_addr));
+		m_led_addr.sin_family = AF_INET;
+		m_led_addr.sin_port = htons(54321);
+		inet_pton(AF_INET, "127.0.0.1", &m_led_addr.sin_addr);
+	}
+
 	PINFOF(LOG_V0, LOG_FDC, "Installed Intel 82077AA floppy disk controller (Raw sector images)\n");
 }
 
 void FloppyCtrl_Raw::remove()
 {
 	FloppyCtrl::remove();
+
+	if(m_led_sock >= 0) {
+		close(m_led_sock);
+		m_led_sock = -1;
+	}
 
 	m_devices->dma()->unregister_channel(DMA_CHAN);
 	g_machine.unregister_irq(IRQ_LINE, name());
@@ -708,6 +727,10 @@ void FloppyCtrl_Raw::cmd_read_data()
 	if(!start_read_write_cmd()) {
 		return;
 	}
+	if(m_led_sock >= 0) {
+		sendto(m_led_sock, "F", 1, MSG_DONTWAIT,
+			(struct sockaddr*)&m_led_addr, sizeof(m_led_addr));
+	}
 
 	uint8_t drive = m_s.command[1] & 0x03;
 
@@ -735,6 +758,10 @@ void FloppyCtrl_Raw::cmd_write_data()
 {
 	if(!start_read_write_cmd()) {
 		return;
+	}
+	if(m_led_sock >= 0) {
+		sendto(m_led_sock, "F", 1, MSG_DONTWAIT,
+			(struct sockaddr*)&m_led_addr, sizeof(m_led_addr));
 	}
 
 	uint8_t drive = m_s.command[1] & 0x03;
