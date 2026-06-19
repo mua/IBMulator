@@ -38,6 +38,7 @@ const std::map<ProgramEvent::FuncName, ProgramEvent::FuncCategory> ProgramEvent:
 	{ FuncName::FUNC_SET_PREV_AUDIO_CH,    FuncCategory::Audio },
 	{ FuncName::FUNC_SET_AUDIO_VOLUME,     FuncCategory::Audio },
 	{ FuncName::FUNC_TOGGLE_POWER,         FuncCategory::Emulation },
+	{ FuncName::FUNC_MACHINE_RESET,        FuncCategory::Emulation },
 	{ FuncName::FUNC_TOGGLE_PAUSE,         FuncCategory::Emulation },
 	{ FuncName::FUNC_TOGGLE_STATUS_IND,    FuncCategory::GUI },
 	{ FuncName::FUNC_TOGGLE_DBG_WND,       FuncCategory::GUI },

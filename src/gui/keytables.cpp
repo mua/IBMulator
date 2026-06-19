@@ -44,6 +44,7 @@ const std::map<std::string, ProgramEvent::FuncName> Keymap::ms_prog_funcs_table 
 	{ "FUNC_SET_PREV_AUDIO_CH",     ProgramEvent::FuncName::FUNC_SET_PREV_AUDIO_CH    },
 	{ "FUNC_SET_AUDIO_VOLUME",      ProgramEvent::FuncName::FUNC_SET_AUDIO_VOLUME     },
 	{ "FUNC_TOGGLE_POWER",          ProgramEvent::FuncName::FUNC_TOGGLE_POWER         },
+	{ "FUNC_MACHINE_RESET",         ProgramEvent::FuncName::FUNC_MACHINE_RESET        },
 	{ "FUNC_TOGGLE_PAUSE",          ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE         },
 	{ "FUNC_TOGGLE_STATUS_IND",     ProgramEvent::FuncName::FUNC_TOGGLE_STATUS_IND    },
 	{ "FUNC_TOGGLE_DBG_WND",        ProgramEvent::FuncName::FUNC_TOGGLE_DBG_WND       },

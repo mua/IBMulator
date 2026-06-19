@@ -102,6 +102,7 @@ struct ProgramEvent {
 		FUNC_SET_PREV_AUDIO_CH,    // set current audio channel that receives FUNC_SET_AUDIO_VOLUME commands
 		FUNC_SET_AUDIO_VOLUME,     // change audio volume for the active channel 
 		FUNC_TOGGLE_POWER,         // toggle the machine's power button
+		FUNC_MACHINE_RESET,        // reset (reboot) the emulated machine
 		FUNC_TOGGLE_PAUSE,         // pause / resume emulation
 		FUNC_TOGGLE_STATUS_IND,    // show / hide the status indicators
 		FUNC_TOGGLE_DBG_WND,       // show / hide the debug windows

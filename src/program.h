@@ -39,6 +39,7 @@ class Program
 
 	std::atomic<int64_t> m_heartbeat;
 	std::atomic<bool> m_quit;
+	std::atomic<bool> m_save_and_quit;
 	Pacer m_pacer;
 	Bench m_bench;
 
@@ -79,6 +80,7 @@ public:
 	bool initialize(int argc, char** argv);
 	int start();
 	void stop();
+	void cmd_save_and_quit() { m_save_and_quit = true; }
 
 	int64_t heartbeat() const { return m_heartbeat; }
 	void set_heartbeat(int64_t _ns);

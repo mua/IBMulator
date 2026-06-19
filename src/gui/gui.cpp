@@ -99,6 +99,7 @@ const std::map<ProgramEvent::FuncName, std::function<void(GUI&,const ProgramEven
 	{ ProgramEvent::FuncName::FUNC_SET_PREV_AUDIO_CH,    &GUI::pevt_func_set_prev_audio_ch    },
 	{ ProgramEvent::FuncName::FUNC_SET_AUDIO_VOLUME,     &GUI::pevt_func_set_audio_volume     },
 	{ ProgramEvent::FuncName::FUNC_GUI_MODE_ACTION,      &GUI::pevt_func_gui_mode_action      },
+	{ ProgramEvent::FuncName::FUNC_MACHINE_RESET,        &GUI::pevt_func_machine_reset        },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_POWER,         &GUI::pevt_func_toggle_power         },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_PAUSE,         &GUI::pevt_func_toggle_pause         },
 	{ ProgramEvent::FuncName::FUNC_TOGGLE_STATUS_IND,    &GUI::pevt_func_toggle_status_ind    },
@@ -2513,6 +2514,13 @@ void GUI::pevt_func_gui_mode_action(const ProgramEvent::Func &_func, EventPhase 
 	if(!was_visible && m_windows.interface->is_system_visible()) {
 		grab_input(false);
 	}
+}
+
+void GUI::pevt_func_machine_reset(const ProgramEvent::Func&, EventPhase _phase)
+{
+	if(_phase != EventPhase::EVT_START) { return; }
+	PDEBUGF(LOG_V1, LOG_GUI, "Machine reset func event\n");
+	if(m_machine->is_on()) { m_machine->cmd_reset(); }
 }
 
 void GUI::pevt_func_toggle_power(const ProgramEvent::Func&, EventPhase _phase)

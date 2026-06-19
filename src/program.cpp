@@ -18,6 +18,7 @@
  */
 
 #include "ibmulator.h"
+#include <signal.h>
 #include "filesys.h"
 #include "hardware/memory.h"
 #include "hardware/cpu.h"
@@ -53,6 +54,7 @@ std::condition_variable Program::ms_cv;
 Program::Program()
 :
 m_quit(false),
+m_save_and_quit(false),
 m_machine(nullptr),
 m_mixer(nullptr),
 m_gui(nullptr),
@@ -556,6 +558,8 @@ bool Program::initialize(int argc, char** argv)
 	init_SDL();
 
 	m_quit = false;
+	m_save_and_quit = false;
+	signal(SIGUSR1, [](int){ g_program.cmd_save_and_quit(); });
 
 	static std::map<std::string, unsigned> waitmethods = {
 		{ "",      PACER_WAIT_AUTO },
@@ -887,6 +891,12 @@ void Program::main_loop()
 
 	while(!m_quit) {
 		m_bench.frame_start();
+
+		if(m_save_and_quit) {
+			m_save_and_quit = false;
+			save_state({QUICKSAVE_RECORD, QUICKSAVE_DESC, "", 0, 0},
+				[this](StateRecord::Info){ stop(); }, [this](std::string){ stop(); });
+		}
 
 		process_evts();
 		m_gui->update(m_pacer.chrono().get_nsec());

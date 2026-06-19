@@ -412,6 +412,7 @@ private:
 	void pevt_func_set_prev_audio_ch(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_set_audio_volume(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_gui_mode_action(const ProgramEvent::Func&, EventPhase);
+	void pevt_func_machine_reset(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_power(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_pause(const ProgramEvent::Func&, EventPhase);
 	void pevt_func_toggle_status_ind(const ProgramEvent::Func&, EventPhase);
