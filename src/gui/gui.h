@@ -104,6 +104,8 @@ protected:
 	int m_width;
 	int m_height;
 	double m_scaling_factor;
+	double m_mouse_speed;
+	bool m_auto_grab = false;
 	SDL_Window *m_SDL_window;
 	std::string m_wnd_title;
 	std::string m_curr_prog;

@@ -163,6 +163,8 @@ public:
 #define GUI_BG_G                "bg_green"
 #define GUI_BG_B                "bg_blu"
 #define GUI_UI_SCALING          "ui_scaling"
+#define GUI_MOUSE_SPEED         "mouse_speed"
+#define GUI_AUTO_GRAB           "auto_grab"
 
 #define DIALOGS_SECTION         "gui_dialogs"
 #define DIALOGS_THEME           "theme"

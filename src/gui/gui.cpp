@@ -256,6 +256,11 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	m_scaling_factor = std::min(m_scaling_factor, 500.0);
 	m_scaling_factor = std::floor((m_scaling_factor / 100.0) * 4.0) / 4.0;
 	PINFOF(LOG_V0, LOG_GUI, "UI scaling: %.0f%%\n", m_scaling_factor * 100.0);
+	m_mouse_speed = g_program.config().get_real(GUI_SECTION, GUI_MOUSE_SPEED, 1.0);
+	m_mouse_speed = std::max(m_mouse_speed, 0.1);
+	m_mouse_speed = std::min(m_mouse_speed, 5.0);
+	PINFOF(LOG_V0, LOG_GUI, "Mouse speed: %.2f\n", m_mouse_speed);
+	m_auto_grab = g_program.config().get_bool(GUI_SECTION, GUI_AUTO_GRAB, false);
 
 	try {
 		init_rmlui();
@@ -343,7 +348,12 @@ void GUI::init(Machine *_machine, Mixer *_mixer)
 	}
 
 	// DONE
-	m_windows.interface->show_welcome_screen(&m_keymaps[m_current_keymap], m_mode);
+	if(!m_auto_grab) {
+		m_windows.interface->show_welcome_screen(&m_keymaps[m_current_keymap], m_mode);
+	}
+	if(m_auto_grab) {
+		grab_input(true);
+	}
 }
 
 void GUI::load_keymap(const std::string &_filename)
@@ -1594,16 +1604,14 @@ void GUI::on_mouse_motion_event(const SDL_Event &_sdl_event)
 	SDL_Event axis_event;
 	if(_sdl_event.motion.xrel) {
 		memcpy(&axis_event, &_sdl_event, sizeof(SDL_Event));
-		//axis_event.motion.x *= m_scaling_factor;
-		//axis_event.motion.xrel *= m_scaling_factor;
+		axis_event.motion.xrel = static_cast<Sint32>(axis_event.motion.xrel * m_mouse_speed);
 		axis_event.motion.y = 0;
 		axis_event.motion.yrel = 0;
 		on_mouse_axis_event("X", axis_event);
 	}
 	if(_sdl_event.motion.yrel) {
 		memcpy(&axis_event, &_sdl_event, sizeof(SDL_Event));
-		//axis_event.motion.y *= m_scaling_factor;
-		//axis_event.motion.yrel *= m_scaling_factor;
+		axis_event.motion.yrel = static_cast<Sint32>(axis_event.motion.yrel * m_mouse_speed);
 		axis_event.motion.x = 0;
 		axis_event.motion.xrel = 0;
 		on_mouse_axis_event("Y", axis_event);
